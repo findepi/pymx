@@ -2,7 +2,7 @@
 from nose.tools import assert_equal, assert_raises
 
 from pymx.frame import Deframer, create_frame_header, unpack_frame_contents, \
-        FrameTooShortError,FrameTooLongError, rameCorruptedError
+        FrameTooShortError, FrameTooLongError, FrameCorruptedError
 
 from .testlib_chop_bytes import chop_bytes
 from .testlib_random import get_random
