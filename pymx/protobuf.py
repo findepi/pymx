@@ -4,7 +4,7 @@ Utilities for handling Google Protocol Buffers objects.
 Copyright Azouk Network Ltd. <http://www.azouk.com/>
 """
 
-from google.protobuf.message import Message
+from google.protobuf.message import Message, DecodeError, EncodeError
 from google.protobuf.reflection import containers
 
 def initialize_message(_message, **kwargs):
@@ -121,4 +121,13 @@ def parse_message(type, buffer):
     ``buffer``. """
     t = type()
     t.ParseFromString(buffer)
+    if not t.IsInitialized():
+        try:
+            t.SerializeToString() # this triggers meaningful exception
+        except EncodeError, e:
+            raise DecodeError(*e.args)
+        else:
+            raise AssertionError("this may never happen: `t' was not "
+                    "initialized just a moment ago but SerializeToString "
+                    "succeeded")
     return t
