@@ -116,12 +116,12 @@ def message_getattr(message, field, default=None):
         return getattr(message, field)
     return default
 
-def parse_message(type, buffer):
+def parse_message(type, buffer, partial=False):
     """Create new instance of Protocol Buffer `type` and parse data from string
     ``buffer``. """
     t = type()
     t.ParseFromString(buffer)
-    if not t.IsInitialized():
+    if not partial and not t.IsInitialized():
         try:
             t.SerializeToString() # this triggers meaningful exception
         except EncodeError, e:

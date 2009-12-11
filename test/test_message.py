@@ -31,4 +31,4 @@ def test_from():
     assert msg.SerializePartialToString() == '\x10\x0f'
 
     # Check hat the deserialized ``from`` can be read via ``from_``.
-    assert parse_message(MultiplexerMessage, '\x10\x0f').from_ == 15
+    assert parse_message(MultiplexerMessage, '\x10\x0f', partial=True).from_ == 15
