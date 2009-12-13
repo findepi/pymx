@@ -1,7 +1,7 @@
 
 import socket
 
-from pymx.naive_channel import Channel
+from pymx.naivechannel import Channel
 from pymx.frame import create_frame_header
 from pymx.protobuf import dict_message, parse_message
 from pymx.message import MultiplexerMessage
