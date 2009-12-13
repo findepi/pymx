@@ -1,3 +1,4 @@
+""""Random" numbers with repeatable results."""
 
 def get_random(seed=18753):
     assert seed is not None

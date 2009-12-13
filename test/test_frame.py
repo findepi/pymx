@@ -24,6 +24,15 @@ frame_contents = [
         ''.join(chr(random.randint(0, 255)) for _ in xrange(1024)) * 64,
     ]
 
+full_frames = [
+        # (contents, frame),
+        ('', '\x00' * 8),
+        ('\x00', '\x01\x00\x00\x00\x8d\xef\x02\xd2\x00'),
+        ('a', '\x01\x00\x00\x00C\xbe\xb7\xe8a'),
+        ('this is a frame content',
+            '\x17\x00\x00\x00NN\xaaFthis is a frame content'),
+    ]
+
 def test_framing():
     for contents in frame_contents:
         assert _unpack_contents(contents) == contents
@@ -33,6 +42,14 @@ def test_framing():
                 extend_contents=True)
         assert_raises(FrameCorruptedError, _unpack_contents, contents,
                 change_crc=True)
+
+def test_frame_creation():
+    for contens, frame in full_frames:
+        assert create_frame_header(contens) + contens == frame
+
+def test_frame_parsing():
+    for contens, frame in full_frames:
+        assert unpack_frame_contents(frame) == contens
 
 def _unpack_contents(contents, change_length=False, change_crc=False,
         extend_contents=False):
