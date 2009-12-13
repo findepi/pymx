@@ -3,10 +3,17 @@ from collections import deque
 
 class BytesFIFO(object):
 
-    def __init__(self, content=''):
-        """Initializes new `BytesFIFO` instance."""
+    def __init__(self, content='', join_upto=None):
+        """Initializes new `BytesFIFO` instance.
+
+        :Parameters:
+            - `content`: initial content of the FIFO
+            - `join_upto`: lazy join adjacent chunks if their total length is
+              less than ``join_upto``
+        """
         self._chunks = deque()
         self._total_length = 0
+        self._join_upto = join_upto
         self.put(content)
 
     def put(self, chunk):
@@ -16,17 +23,34 @@ class BytesFIFO(object):
         self._chunks.append(chunk)
         self._total_length += len(chunk)
 
+    append = put
+
     @property
     def available_bytes(self):
         """Returns the number of available bytes in this FIFO."""
         return self._total_length
+
+    @property
+    def next_chunk(self):
+        """Returns the next chunk in the FIFO without removing it from the
+        FIFO.  """
+
+        if self._join_upto is not None and len(self._chunks[0]) < \
+                self._join_upto:
+            collected = BytesFIFO()
+            while self._chunks and collected.available_bytes + \
+                    len(self._chunks[0]) <= self._join_upto:
+                collected.put(self._chunks.popleft())
+            self._chunks.appendleft(''.join(collected._chunks))
+
+        return self._chunks[0]
 
     def get(self, max_bytes):
         """Returns at mosts ``max_bytes`` from FIFO. Returns at least one byte
         of the FIFO is not empty. """
         if not self._chunks:
             return ''
-        next_chunk = self._chunks[0]
+        next_chunk = self.next_chunk
         if len(next_chunk) <= max_bytes:
             popped = self._chunks.popleft()
             self._total_length -= len(popped)
