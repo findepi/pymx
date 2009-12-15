@@ -25,10 +25,11 @@ class BytesFIFO(object):
 
     append = put
 
-    @property
-    def available_bytes(self):
+    def __len__(self):
         """Returns the number of available bytes in this FIFO."""
         return self._total_length
+
+    available_bytes = property(__len__)
 
     @property
     def next_chunk(self):
