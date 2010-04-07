@@ -31,20 +31,20 @@ def test_create_connections_manager():
     create_connections_manager()
 
 def test_testlib_mxserver():
-    server, server_thread = SimpleMxServerThread.run_threaded()
+    server = SimpleMxServerThread.run_threaded()
     server.shutdown()
-    server_thread.join()
+    server.thread.join()
 
 def test_testlib_mxserver_connect():
-    server, server_thread = SimpleMxServerThread.run_threaded()
+    server = SimpleMxServerThread.run_threaded()
     so = socket.socket()
     so.connect(server.server_address)
     server.shutdown()
-    server_thread.join()
+    server.thread.join()
 
 
 def test_channel_connect():
-    server, server_thread = SimpleMxServerThread.run_threaded()
+    server = SimpleMxServerThread.run_threaded()
 
     class Dict(dict):
         pass
@@ -63,10 +63,10 @@ def test_channel_connect():
 
     assert manager.handle_connect_called
     server.shutdown()
-    server_thread.join()
+    server.thread.join()
 
 def test_manager_connect():
-    server, server_thread = SimpleMxServerThread.run_threaded()
+    server = SimpleMxServerThread.run_threaded()
     manager = create_connections_manager()
     manager.connect(server.server_address)
     time.sleep(0.07) # TODO wait for connection (with timeout)
@@ -74,13 +74,13 @@ def test_manager_connect():
     assert sum(server.message_counters.values()) == 1, server.message_counters
     assert server.message_counters[2] == 1
     server.shutdown()
-    server_thread.join()
+    server.thread.join()
 
 def test_client_connect():
-    server, server_thread = SimpleMxServerThread.run_threaded()
+    server = SimpleMxServerThread.run_threaded()
     client = Client(type=317)
     client.connect(server.server_address)
     time.sleep(0.07) # TODO wait for connection (with timeout)
     client.shutdown()
     server.shutdown()
-    server_thread.join()
+    server.thread.join()
