@@ -12,17 +12,15 @@ all:
 	@ echo
 	@ exit 1
 
-build: protoc test build-only
+build: protoc
+	python setup.py build
+	python setup.py bdist_egg
 
 protoc:
 	python setup.py build # make protoc command available
 	python setup.py protoc
 
-build-only:
-	python setup.py build
-	python setup.py bdist_egg
-
-test:
+test: protoc
 	python setup.py test
 
 test-coverage:
@@ -32,4 +30,4 @@ clean::
 	find . \( -name \*~ -o -name \*.py\[oc\] \) -delete -printf 'removed %p\n'
 	rm -vrf pyMX.egg-info
 
-.PHONY: all build protoc test build-only clean
+.PHONY: all build protoc test test-coverage clean
