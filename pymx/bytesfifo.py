@@ -48,7 +48,7 @@ class BytesFIFO(object):
 
     def get(self, max_bytes):
         """Returns at mosts ``max_bytes`` from FIFO. Returns at least one byte
-        of the FIFO is not empty. """
+        if the FIFO is not empty. """
         if not self._chunks:
             return ''
         next_chunk = self.next_chunk

@@ -52,9 +52,8 @@ def initialize_message(_message, **kwargs):
                 target.CopyFrom(value)
 
             else:
-                assert isinstance(value, (dict, Message)), \
-                        "Initializer for a Message field must be a dict or " \
-                        "Message."
+                raise ValueError("Initializer for a Message field must be a "
+                        "dict or Message.")
 
         else:
             assert isinstance(target, (basestring, int, long, float, bool))

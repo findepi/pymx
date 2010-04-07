@@ -23,7 +23,7 @@ protoc:
 test: protoc
 	python setup.py test
 
-test-coverage:
+test-coverage: protoc
 	nosetests --with-coverage --cover-package=pymx
 
 clean::

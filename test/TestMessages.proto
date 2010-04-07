@@ -1,0 +1,11 @@
+
+message VariousFields {
+    required uint32 req_uint32 = 1;
+    optional uint32 opt_uint32 = 2;
+    repeated uint32 rep_uint32 = 3;
+}
+
+message VariousFieldsList {
+    repeated VariousFields fields = 1;
+    optional VariousFields field = 2;
+}

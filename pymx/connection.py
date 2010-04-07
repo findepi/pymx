@@ -12,6 +12,7 @@ import asyncore
 try:
     file_dispatcher = asyncore.file_dispatcher
 except AttributeError:
+    # e.g. we are on windows
     file_dispatcher = None
 
 from .channel import Channel
@@ -183,7 +184,7 @@ def _socket_pipe():
     for _ in xrange(10):
         reader, writer_address = read_acceptor.accept()
         if writer_address != writer.getsockname():
-            sys.stderr.write(__name__ + "._socket_pipe: Waring: port " +
+            sys.stderr.write(__name__ + "._socket_pipe: Waring: port "
                     "scanning detected.\n")
             reader.close()
             continue

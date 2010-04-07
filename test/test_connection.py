@@ -3,9 +3,12 @@ import asyncore
 import socket
 import contextlib
 
+from nose.tools import eq_, assert_almost_equal
+
 from pymx.connection import ConnectionsManager, _socket_pipe
 from pymx.protocol import WelcomeMessage
 from pymx.message import MultiplexerMessage
+from pymx.protobuf import dict_message
 from pymx.channel import Channel
 from pymx.client import Client
 
@@ -77,8 +80,20 @@ def test_manager_connect():
         assert server.message_counters[2] == 1
 
 def test_client_connect():
-    with contextlib.closing(JmxServerThread.run_threaded()) as server:
+    yield check_client_connect, SimpleMxServerThread
+    yield check_client_connect, JmxServerThread
+
+def check_client_connect(server_impl):
+    with contextlib.closing(server_impl.run_threaded()) as server:
         client = Client(type=317)
+        eq_(client.type, 317)
         client.connect(server.server_address)
         time.sleep(0.07) # TODO wait for connection (with timeout)
+
+        msg = client.create_message(id=5)
+        assert_almost_equal(msg.timestamp, time.time(), -1)
+        eq_(dict(dict_message(msg), timestamp=None), {'timestamp': None, 'id':
+            5, 'from': client.instance_id})
+
         client.shutdown()
+
