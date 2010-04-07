@@ -1,3 +1,8 @@
+# This Makefile is not required for the pyMX to be built, installed or
+# packaged. It's intended as a collection of shortcuts/scripts/helpers only and
+# for those that type 'make tea' without thinking instead of turning on a
+# kettle.
+
 all:
 	@ echo
 	@ echo "This is only a complementary Makefile, you should not need to use it." >&2
@@ -19,6 +24,9 @@ build-only:
 
 test:
 	python setup.py test
+
+test-coverage:
+	nosetests --with-coverage --cover-package=pymx
 
 clean::
 	find . \( -name \*~ -o -name \*.py\[oc\] \) -delete -printf 'removed %p\n'
