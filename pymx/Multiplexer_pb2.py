@@ -67,7 +67,7 @@ _COMPRESSION_VALUES = descriptor.EnumDescriptor(
 _MULTIPLEXERPEERDESCRIPTION = descriptor.Descriptor(
   name='MultiplexerPeerDescription',
   full_name='multiplexer.MultiplexerPeerDescription',
-  filename='Multiplexer.proto',
+  filename='pymx/Multiplexer.proto',
   containing_type=None,
   fields=[
     descriptor.FieldDescriptor(
@@ -117,7 +117,7 @@ _MULTIPLEXERPEERDESCRIPTION = descriptor.Descriptor(
 _MULTIPLEXERMESSAGEDESCRIPTION_ROUTINGRULE = descriptor.Descriptor(
   name='RoutingRule',
   full_name='multiplexer.MultiplexerMessageDescription.RoutingRule',
-  filename='Multiplexer.proto',
+  filename='pymx/Multiplexer.proto',
   containing_type=None,
   fields=[
     descriptor.FieldDescriptor(
@@ -174,7 +174,7 @@ _MULTIPLEXERMESSAGEDESCRIPTION_ROUTINGRULE = descriptor.Descriptor(
 _MULTIPLEXERMESSAGEDESCRIPTION = descriptor.Descriptor(
   name='MultiplexerMessageDescription',
   full_name='multiplexer.MultiplexerMessageDescription',
-  filename='Multiplexer.proto',
+  filename='pymx/Multiplexer.proto',
   containing_type=None,
   fields=[
     descriptor.FieldDescriptor(
@@ -217,7 +217,7 @@ _MULTIPLEXERMESSAGEDESCRIPTION = descriptor.Descriptor(
 _LOGGINGMETHOD = descriptor.Descriptor(
   name='LoggingMethod',
   full_name='multiplexer.LoggingMethod',
-  filename='Multiplexer.proto',
+  filename='pymx/Multiplexer.proto',
   containing_type=None,
   fields=[
   ],
@@ -233,7 +233,7 @@ _LOGGINGMETHOD = descriptor.Descriptor(
 _COMPRESSION = descriptor.Descriptor(
   name='Compression',
   full_name='multiplexer.Compression',
-  filename='Multiplexer.proto',
+  filename='pymx/Multiplexer.proto',
   containing_type=None,
   fields=[
   ],
@@ -249,7 +249,7 @@ _COMPRESSION = descriptor.Descriptor(
 _MULTIPLEXERMESSAGE = descriptor.Descriptor(
   name='MultiplexerMessage',
   full_name='multiplexer.MultiplexerMessage',
-  filename='Multiplexer.proto',
+  filename='pymx/Multiplexer.proto',
   containing_type=None,
   fields=[
     descriptor.FieldDescriptor(
@@ -355,7 +355,7 @@ _MULTIPLEXERMESSAGE = descriptor.Descriptor(
 _WELCOMEMESSAGE = descriptor.Descriptor(
   name='WelcomeMessage',
   full_name='multiplexer.WelcomeMessage',
-  filename='Multiplexer.proto',
+  filename='pymx/Multiplexer.proto',
   containing_type=None,
   fields=[
     descriptor.FieldDescriptor(
@@ -391,7 +391,7 @@ _WELCOMEMESSAGE = descriptor.Descriptor(
 _BACKENDFORPACKETSEARCH = descriptor.Descriptor(
   name='BackendForPacketSearch',
   full_name='multiplexer.BackendForPacketSearch',
-  filename='Multiplexer.proto',
+  filename='pymx/Multiplexer.proto',
   containing_type=None,
   fields=[
     descriptor.FieldDescriptor(
@@ -413,7 +413,7 @@ _BACKENDFORPACKETSEARCH = descriptor.Descriptor(
 _DELIVERYERROR = descriptor.Descriptor(
   name='DeliveryError',
   full_name='multiplexer.DeliveryError',
-  filename='Multiplexer.proto',
+  filename='pymx/Multiplexer.proto',
   containing_type=None,
   fields=[
     descriptor.FieldDescriptor(
@@ -463,7 +463,7 @@ _DELIVERYERROR = descriptor.Descriptor(
 _MULTIPLEXERRULES = descriptor.Descriptor(
   name='MultiplexerRules',
   full_name='multiplexer.MultiplexerRules',
-  filename='Multiplexer.proto',
+  filename='pymx/Multiplexer.proto',
   containing_type=None,
   fields=[
     descriptor.FieldDescriptor(
@@ -492,7 +492,7 @@ _MULTIPLEXERRULES = descriptor.Descriptor(
 _SEARCHCOLLECTEDLOGS = descriptor.Descriptor(
   name='SearchCollectedLogs',
   full_name='multiplexer.SearchCollectedLogs',
-  filename='Multiplexer.proto',
+  filename='pymx/Multiplexer.proto',
   containing_type=None,
   fields=[
     descriptor.FieldDescriptor(
@@ -535,7 +535,7 @@ _SEARCHCOLLECTEDLOGS = descriptor.Descriptor(
 _REPLAYCOLLECTEDEVENTS = descriptor.Descriptor(
   name='ReplayCollectedEvents',
   full_name='multiplexer.ReplayCollectedEvents',
-  filename='Multiplexer.proto',
+  filename='pymx/Multiplexer.proto',
   containing_type=None,
   fields=[
     descriptor.FieldDescriptor(

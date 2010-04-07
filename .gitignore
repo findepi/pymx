@@ -4,3 +4,5 @@
 *.swp
 /.coverage
 /pyMX.egg-info/
+/build
+/dist
