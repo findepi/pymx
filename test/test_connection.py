@@ -1,6 +1,7 @@
 import time
 import asyncore
 import socket
+import contextlib
 
 from pymx.connection import ConnectionsManager, _socket_pipe
 from pymx.protocol import WelcomeMessage
@@ -8,7 +9,7 @@ from pymx.message import MultiplexerMessage
 from pymx.channel import Channel
 from pymx.client import Client
 
-from .testlib_mxserver import SimpleMxServerThread
+from .testlib_mxserver import SimpleMxServerThread, JmxServerThread
 
 def test_socket_pipe():
     reader, writer = _socket_pipe()
@@ -66,21 +67,18 @@ def test_channel_connect():
     server.thread.join()
 
 def test_manager_connect():
-    server = SimpleMxServerThread.run_threaded()
-    manager = create_connections_manager()
-    manager.connect(server.server_address)
-    time.sleep(0.07) # TODO wait for connection (with timeout)
-    manager.shutdown()
-    assert sum(server.message_counters.values()) == 1, server.message_counters
-    assert server.message_counters[2] == 1
-    server.shutdown()
-    server.thread.join()
+    with contextlib.closing(SimpleMxServerThread.run_threaded()) as server:
+        manager = create_connections_manager()
+        manager.connect(server.server_address)
+        time.sleep(0.07) # TODO wait for connection (with timeout)
+        manager.shutdown()
+        assert sum(server.message_counters.values()) == 1, \
+                server.message_counters
+        assert server.message_counters[2] == 1
 
 def test_client_connect():
-    server = SimpleMxServerThread.run_threaded()
-    client = Client(type=317)
-    client.connect(server.server_address)
-    time.sleep(0.07) # TODO wait for connection (with timeout)
-    client.shutdown()
-    server.shutdown()
-    server.thread.join()
+    with contextlib.closing(JmxServerThread.run_threaded()) as server:
+        client = Client(type=317)
+        client.connect(server.server_address)
+        time.sleep(0.07) # TODO wait for connection (with timeout)
+        client.shutdown()
