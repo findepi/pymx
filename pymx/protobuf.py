@@ -111,7 +111,7 @@ def message_getattr(message, field, default=None):
     """
     if not isinstance(message, Message):
         return getattr(message, field, default)
-    if getattr(message, '_has_' + field):
+    if message.HasField(field):
         return getattr(message, field)
     return default
 

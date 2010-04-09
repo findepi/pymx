@@ -52,7 +52,8 @@ def test_message_getattr():
     msg = VariousFields()
     assert message_getattr(msg, 'opt_uint32') is None
     assert message_getattr(msg, 'req_uint32') is None
-    raises(AttributeError)(lambda: message_getattr(msg, 'rep_uint32'))()
+    raises(AttributeError, ValueError)(
+            lambda: message_getattr(msg, 'rep_uint32'))()
 
     msg.req_uint32 = msg.opt_uint32 = 1
     eq_(message_getattr(msg, 'req_uint32'), 1)
