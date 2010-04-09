@@ -11,6 +11,7 @@ class BytesFIFO(object):
             - `join_upto`: lazy join adjacent chunks if their total length is
               less than ``join_upto``
         """
+        object.__init__(self)
         self._chunks = deque()
         self._total_length = 0
         self._join_upto = join_upto

@@ -12,6 +12,7 @@ class Channel(object):
     receive_bufsize = 4096
 
     def __init__(self, socket=None, address=None):
+        object.__init__(self)
         if socket is None:
             if address is not None:
                 socket = socket_()

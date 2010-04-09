@@ -67,6 +67,7 @@ class Deframer(object):
     PRE_CONTENTS = 2
 
     def __init__(self):
+        object.__init__(self)
         self._bytes_fifo = BytesFIFO()
         self._state = self.PRE_HEADER
         self._length = self._crc = None
