@@ -57,10 +57,15 @@ class SimpleMxServerThread(_ThreadEnabledServerMixin, object):
     def run(self):
         try:
             while True:
-                client, address = self._sock.accept()
+                with self._lock:
+                    sock = self._sock
+                if sock is None:
+                    break
+                client, address = sock.accept()
                 with self._lock:
                     if self._shutdown_called:
                         client.close()
+                        break
                     else:
                         self._client = client
                 client_welcome = self._read_message(client)
@@ -75,10 +80,21 @@ class SimpleMxServerThread(_ThreadEnabledServerMixin, object):
                 raise
 
     def shutdown(self):
-        self._sock.shutdown(socket.SHUT_RDWR)
-        self._sock.close()
         with self._lock:
             self._shutdown_called = True
+        # wakeup listening thread by issuing a connect
+        s = socket.socket()
+        s.settimeout(1)
+        try:
+            s.connect(self.server_address)
+        except socket.error:
+            traceback.print_exc()
+
+        with self._lock:
+            self._sock.close()
+            self._sock = None
+
+        with self._lock:
             if self._client is not None:
                 try:
                     self._client.shutdown(socket.SHUT_RDWR)
