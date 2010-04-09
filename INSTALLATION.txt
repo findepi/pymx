@@ -1,0 +1,83 @@
+INSTALLATION
+============
+Piotr Findeisen <piotr.findeisen@gmail.com>
+
+
+Requirements
+------------
+pyMX has following requirements:
+
+- Python, version 2.5-2.99
+- Google Protocol Buffers for Python (installing Google Protocol Buffers
+  compiler "protoc" is recommended)
+- setuptools for installing and/or running tests (automatically downloaded when
+  needed)
+- nose (unittest framework for Python) for running tests
+- Java for running tests (JMX server .jar file is included with source
+  distribution)
+
+
+Linux
+-----
+On Linux software is usually installed using package manager. For example, Debian-like
+systems you can install all dependencies with
+
+------------
+apt-get install python python-setuptools python-protobuf protobuf-compiler \
+        python-nose sun-java6-bin
+------------
+
+If you don’t have packaged pyMX, you can install it locally running
+
+------------
+python setup.py test && python setup.py develop
+------------
+
+or globally
+
+------------
+python setup.py test && sudo python setup.py install
+------------
+
+
+
+Windows
+-------
+
+Installing requirements
+~~~~~~~~~~~~~~~~~~~~~~~
+- Install Python with an .exe installer from http://www.python.org/download/
+- Install setuptools with appropriate .exe installer from
+  http://pypi.python.org/pypi/setuptools#files.
+- It’s handy to add `python.exe` and setuptools scripts to your `PATH`. If you
+  chose Python version 2.6, append this to the `%PATH%` environment variable:
+  `;C:\Python26;C:\Python26\Scripts` (instructions for Windows XP users can be
+  found at http://www.computerhope.com/issues/ch000549.htm)
+- Install nose by running something like
+  * `easy_install nose` or, if you don’t have `easy_install` on your `PATH`:
+  * `C:\Python26\Scripts\easy_install nose`
+- Install protoc from http://code.google.com/p/protobuf/downloads/list
+  (choose something like "protoc-X.Y.Z-win32.zip") — see an attached readme
+  file for details
+- Install Google Protocol Buffers for Python from
+  http://code.google.com/p/protobuf/downloads/list (choose something like
+  "protobuf-X.Y.Z.zip")
+  * you don’t need to build whole C++ library nor a Java version
+  * go directly into `python` subfolder and see `README.txt` for instructions
+- Install Java from http://www.java.com/getjava/
+
+Installing pyMX
+~~~~~~~~~~~~~~~
+Run tests:
+
+------------
+python setup.py test
+------------
+
+and, if everything went all right, install:
+
+------------
+python setup.py install
+------------
+
+// vim: set syntax=asciidoc:
