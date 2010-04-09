@@ -4,8 +4,10 @@
 # kettle.
 
 DOCUMENTATION := INSTALLATION.html
+CONSTANTS := pymx/protocol_constants.py test/test_constants.py
+JMX_JAR := test/jmx-0.9-withdeps.jar
 
-all:
+info:
 	@ echo
 	@ echo "This is only a complementary Makefile, you should not need to use it." >&2
 	@ echo "Use 'python setup.py' instead."
@@ -14,9 +16,19 @@ all:
 	@ echo
 	@ exit 1
 
+all: build doc test
+
+constants: $(CONSTANTS)
+
+pymx/protocol_constants.py: pymx/system.rules
+	java -jar $(JMX_JAR) compile-constants -python -output "$@" -input "$<" -system
+
+test/test_constants.py: test/test.rules
+	java -jar $(JMX_JAR) compile-constants -python -output "$@" -input "$^"
+
 doc: $(DOCUMENTATION)
 
-build: protoc
+build: constants protoc
 	python setup.py build
 	python setup.py bdist_egg
 
@@ -35,6 +47,6 @@ $(DOCUMENTATION): %.html: %.txt
 
 clean::
 	find . \( -name \*~ -o -name \*.py\[oc\] \) -delete -printf 'removed %p\n'
-	rm -vrf pyMX.egg-info $(DOCUMENTATION)
+	rm -vrf pyMX.egg-info $(DOCUMENTATION) $(CONSTANTS)
 
-.PHONY: all build protoc test test-coverage clean doc
+.PHONY: all build protoc test test-coverage clean doc info constants
