@@ -7,7 +7,7 @@ Requirements
 ------------
 pyMX has following requirements:
 
-- Python, version 2.5-2.99
+- Python, version 2.6-2.99
 - Google Protocol Buffers for Python (installing Google Protocol Buffers
   compiler "protoc" is recommended)
 - setuptools for installing and/or running tests (automatically downloaded when

@@ -1,6 +1,6 @@
 from __future__ import with_statement
 
-import os
+import os.path
 import socket
 import traceback
 import errno
@@ -168,5 +168,5 @@ class JmxServerThread(_ThreadEnabledServerMixin, object):
         return True
 
     def shutdown(self):
-        os.kill(self.subproc.pid, signal.SIGINT)
+        self.subproc.terminate()
 
