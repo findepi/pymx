@@ -51,7 +51,7 @@ def test_client_connect_ping_self():
         with contextlib.closing(Client(type=317)) as client:
             client.connect(server.server_address)
             time.sleep(0.07) # TODO wait for connection (with timeout)
-            msg = client.create_message(id=5, to=client.instance_id)
+            msg = client.create_message(to=client.instance_id, type=0)
             client.send_message(msg)
-            other = client.receive()
+            other = client.receive(timeout=5)
             eq_(msg, other)

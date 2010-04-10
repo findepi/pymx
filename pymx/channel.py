@@ -3,8 +3,9 @@ import weakref
 import socket
 
 from asyncore import dispatcher
+from google.protobuf.message import Message
 
-from .frame import Deframer
+from .frame import Deframer, create_frame_header
 from .message import MultiplexerMessage
 from .protocol import WelcomeMessage
 from .protobuf import parse_message
@@ -53,10 +54,16 @@ class Channel(dispatcher):
         written = self.send(self._outgoing_buffer.next_chunk)
         assert written > 0
         popped = self._outgoing_buffer.get(written)
-        assert len(popped) == written
+        assert len(popped) == written, (popped, written)
 
     def enque_outgoing(self, bytes):
+        if isinstance(bytes, Message):
+            bytes = bytes.SerializeToString()
+            self.enque_outgoing(create_frame_header(bytes))
         if not bytes:
             return
         self._outgoing_buffer.append(bytes)
         self.handle_write()
+
+    def _receive_message(self, message):
+        self.manager.handle_message(message)

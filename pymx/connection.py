@@ -2,12 +2,16 @@
 from __future__ import absolute_import, with_statement
 
 import os
+from random import choice
 from threading import RLock, Thread, currentThread
 from functools import wraps, partial
+from collections import deque
+from Queue import Queue, Empty
 
 import asyncore
 try:
     file_dispatcher = asyncore.file_dispatcher
+    assert file_dispatcher
 except AttributeError:
     # e.g. we are on windows
     file_dispatcher = None
@@ -16,16 +20,17 @@ except AttributeError:
 from .channel import Channel
 from .message import MultiplexerMessage
 from .frame import create_frame_header
+from .protocol_constants import MessageTypes
+from .protobuf import make_message
+from .timer import Timer
+from .atomic import Atomic
 
-#def synchronized(method):
-    #@wraps(method)
-    #def synchronized_wrapper(self, *args, **kwargs):
-        #with self._lock:
-            #return method(self, *args, **kwargs)
-    #return synchronized_wrapper
-
-class _Dict(dict):
-    pass
+def _listify(seq):
+    """Returns ``seq`` or ``list(seq)`` whichever supports ``__len__`` magic
+    method. """
+    if callable(getattr(seq, '__len__', None)):
+        return seq
+    return list(seq)
 
 def _schedule_in_io_thread(method):
     @wraps(method)
@@ -44,6 +49,8 @@ def _in_io_thread_only(method):
     return in_io_thread_wrapper
 
 class ConnectionsManager(object):
+
+    __creation_counter = Atomic(0)
 
     ONE = 1
     ALL = 2
@@ -68,11 +75,15 @@ class ConnectionsManager(object):
     _is_closing = False
     """Specifies close order has already been issued. """
 
+    _incoming_messages = None
+    """Queue of incoming messages not yet consumed by the client."""
+
     def __init__(self, welcome_message):
         object.__init__(self)
         self._lock = RLock()
-        self._channel_map = _Dict()
+        self._channel_map = {}
         self._tasks = []
+        self._incoming_messages = Queue()
 
         assert isinstance(welcome_message, MultiplexerMessage)
         welcome_message = welcome_message.SerializeToString()
@@ -112,7 +123,9 @@ class ConnectionsManager(object):
             self._task_notifier_pipe = write_end.makefile('w', 0)
 
     def _start_io_thread(self):
-        self._io_thread = Thread(target=self._io_main)
+        self._io_thread = Thread(target=self._io_main,
+                name='C-Manager-IO-Thread-#' +
+                str(ConnectionsManager.__creation_counter.inc()))
         self._io_thread.setDaemon(True)
         self._io_thread.start()
 
@@ -128,19 +141,17 @@ class ConnectionsManager(object):
     def channel_map(self):
         return self._channel_map
 
+    @property
+    def _all_channels(self):
+        return (ch for ch in self.channel_map.itervalues()
+                if isinstance(ch, Channel))
+
     def _enque_io_task(self, *args, **kwargs):
         task = partial(*args, **kwargs)
         assert currentThread() is not self._io_thread
         with self._lock:
             self._tasks.append(task)
         self._task_notifier_pipe.write('t')
-
-    @_schedule_in_io_thread
-    def connect(self, address):
-        """Initiates asynchronous connection."""
-        assert currentThread() is self._io_thread, \
-                "this code must be called by IO thread only"
-        Channel(address=address, manager=self)
 
     def close(self):
         with self._lock:
@@ -154,13 +165,62 @@ class ConnectionsManager(object):
     def _shutdown(self):
         asyncore.close_all(map=self.channel_map)
 
+    @_schedule_in_io_thread
+    def connect(self, address):
+        """Initiates asynchronous connection."""
+        assert currentThread() is self._io_thread, \
+                "this code must be called by IO thread only"
+        Channel(address=address, manager=self)
+
     @_in_io_thread_only
     def handle_connect(self, channel):
         channel.enque_outgoing(self._welcome_frame)
 
+    @_schedule_in_io_thread
+    def send_message(self, message, connection):
+        channels = self._get_channels(connection)
+        for channel in channels:
+            assert isinstance(channel, Channel), self.channel_map
+            channel.enque_outgoing(message)
 
-class _TaskNotifier(file_dispatcher if file_dispatcher is not None else
-        asyncore.dispatcher):
+    def _get_channels(self, connection):
+        if connection is ConnectionsManager.ALL:
+            return self._all_channels
+        if connection is ConnectionsManager.ONE:
+            return (choice(_listify(self._all_channels)),)
+        raise ValueError("Could not select channel for connection", connection)
+
+
+    def __handle_connection_welcome(self, message):
+        # TODO could validate it's the first CONNECTION_WELCOME on this
+        # channel
+        pass
+
+    def __handle_heartbit(self, message):
+        pass
+
+    @staticmethod # this function is called with explicit 'self'
+    def __default_message_handler(self, message):
+        self._incoming_messages.put(message)
+
+    __message_handlers = {
+            MessageTypes.CONNECTION_WELCOME: __handle_connection_welcome,
+            MessageTypes.HEARTBIT: __handle_heartbit,
+        }
+
+    def handle_message(self, message):
+        handler = self.__message_handlers.get(message.type,
+                self.__default_message_handler)
+        handler(self, message)
+
+    def receive(self, timeout):
+        try:
+            return self._incoming_messages.get(timeout=timeout)
+        except Empty:
+            return None
+
+
+class _TaskNotifier(file_dispatcher or asyncore.dispatcher):
 
     ignore_log_types = ()
 

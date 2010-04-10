@@ -55,12 +55,9 @@ def check_mx_server_context(kwargs):
 
 def test_channel_connect():
 
-    class Dict(dict):
-        pass
-
     class Manager(object):
         def __init__(self):
-            self.channel_map = Dict()
+            self.channel_map = {}
 
         handle_connect_called = False
         def handle_connect(self, channel):

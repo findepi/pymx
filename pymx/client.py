@@ -6,6 +6,7 @@ from .protobuf import make_message
 from .message import MultiplexerMessage
 from .connection import ConnectionsManager
 from .protocol import WelcomeMessage
+from .protocol_constants import MessageTypes
 
 _rand64 = partial(randint, 0, 2**64 - 1)
 
@@ -21,7 +22,8 @@ class Client(object):
         welcome = make_message(WelcomeMessage, id=self.instance_id, type=type,
                 multiplexer_password=multiplexer_password)
 
-        welcome_message = make_message(MultiplexerMessage, type=2, # FIXME: constant
+        welcome_message = make_message(MultiplexerMessage,
+                type=MessageTypes.CONNECTION_WELCOME,
                 message=welcome.SerializeToString(), from_=self.instance_id)
 
         self._manager = ConnectionsManager(welcome_message)
@@ -45,7 +47,7 @@ class Client(object):
         return self._manager.connect(*args, **kwargs)
 
     def send_message(self, message, connection=ConnectionsManager.ONE):
-        raise NotImplementedError
+        return self._manager.send_message(message, connection=connection)
 
     def event(self, message):
         return self.send_message(message, connection=ConnectionsManager.ALL)
@@ -55,7 +57,7 @@ class Client(object):
         raise NotImplementedError
 
     def receive(self, timeout=None):
-        raise NotImplementedError
+        return self._manager.receive(timeout=timeout)
 
     def close(self):
         self._manager.close()
