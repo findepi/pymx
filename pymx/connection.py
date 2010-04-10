@@ -67,6 +67,9 @@ class ConnectionsManager(object):
     _io_thread = None
     """An IO thread object. Never accessed from IO thread. """
 
+    _shutting_down = False
+    """Specifies shutdown order has already been issued. """
+
     def __init__(self, welcome_message):
         object.__init__(self)
         self._lock = RLock()
@@ -142,6 +145,10 @@ class ConnectionsManager(object):
         Channel(address=address, manager=self)
 
     def shutdown(self):
+        with self._lock:
+            if self._shutting_down:
+                return
+            self._shutting_down = True
         self._shutdown()
         self._io_thread.join()
 
@@ -152,6 +159,7 @@ class ConnectionsManager(object):
     @_in_io_thread_only
     def handle_connect(self, channel):
         channel.enque_outgoing(self._welcome_frame)
+
 
 class _TaskNotifier(file_dispatcher if file_dispatcher is not None else
         asyncore.dispatcher):

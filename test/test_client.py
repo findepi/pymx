@@ -11,13 +11,23 @@ from pymx.client import Client
 from .testlib_mxserver import SimpleMxServerThread, JmxServerThread, \
         create_mx_server_context
 
-def test_client():
+def test_client_shutdown():
+    c = Client(type=317)
+    # no shutdown
+
     c = Client(type=317)
     c.shutdown()
-    c.close()
 
     c = Client(type=317)
     c.close()
+
+    c = Client(type=317)
+    c.shutdown()
+    c.close() # redundant
+
+    c = Client(type=317)
+    c.close()
+    c.shutdown() # redundant
 
     with contextlib.closing(Client(type=317)):
         pass
@@ -38,4 +48,14 @@ def check_client_connect(server_impl):
         eq_(dict(dict_message(msg), timestamp=None), {'timestamp': None, 'id':
             5, 'from': client.instance_id})
 
-        client.shutdown()
+        client.close()
+
+def test_client_connect_ping_self():
+    with create_mx_server_context() as server:
+        with contextlib.closing(Client(type=317)) as client:
+            client.connect(server.server_address)
+            time.sleep(0.07) # TODO wait for connection (with timeout)
+            msg = client.create_message(id=5, to=client.instance_id)
+            client.send_message(msg)
+            other = client.receive()
+            eq_(msg, other)

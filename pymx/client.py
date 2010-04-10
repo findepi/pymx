@@ -41,6 +41,7 @@ class Client(object):
         return make_message(MultiplexerMessage, **kwargs)
 
     def connect(self, *args, **kwargs):
+        # make this optionally synchronous
         return self._manager.connect(*args, **kwargs)
 
     def send_message(self, message, connection=ConnectionsManager.ONE):
@@ -58,4 +59,7 @@ class Client(object):
 
     def shutdown(self):
         self._manager.shutdown()
+
+    def close(self):
+        self.shutdown()
 
