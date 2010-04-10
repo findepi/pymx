@@ -141,12 +141,20 @@ class JmxServerThread(_ThreadEnabledServerMixin, object):
         jmx_jar = resource_filename(__name__, 'jmx-0.9-withdeps.jar')
         if not os.path.exists(jmx_jar):
             raise RuntimeError("jmx jar could not be found")
+
+        jmx_config = resource_filename(__name__, 'jmx.test.configuration')
+        if not os.path.exists(jmx_config):
+            raise RuntimeError("jmx configuration could not be found")
+
         java = find_executable('java')
         if java is None:
             raise RuntimeError(
                     "java is not available, please adjust your PATH")
-        jmx_server_command = [java, '-jar', jmx_jar, 'server', '-host',
-                self.server_address[0], '-port', str(self.server_address[1])]
+        jmx_server_command = [java,
+                '-Djava.util.logging.config.file=' + jmx_config,
+                '-jar', jmx_jar, 'server',
+                '-host', self.server_address[0],
+                '-port', str(self.server_address[1])]
         self.subproc = subprocess.Popen(jmx_server_command)
 
     @classmethod
