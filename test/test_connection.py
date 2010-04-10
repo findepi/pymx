@@ -5,7 +5,8 @@ import asyncore
 import socket
 import contextlib
 
-from pymx.connection import ConnectionsManager, _socket_pipe
+from pymx.connection import ConnectionsManager
+from pymx.hacks.socket_pipe import socket_pipe
 from pymx.protocol import WelcomeMessage
 from pymx.message import MultiplexerMessage
 from pymx.channel import Channel
@@ -14,7 +15,7 @@ from .testlib_mxserver import SimpleMxServerThread, JmxServerThread, \
         create_mx_server_context
 
 def test_socket_pipe():
-    reader, writer = _socket_pipe()
+    reader, writer = socket_pipe()
     writer.sendall('there is nothing wrong\x00.')
     writer.close()
     reader.setblocking(True)

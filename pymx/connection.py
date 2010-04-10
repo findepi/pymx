@@ -1,10 +1,7 @@
 
-from __future__ import with_statement
+from __future__ import absolute_import, with_statement
 
 import os
-import sys
-import socket
-import random
 from threading import RLock, Thread, currentThread
 from functools import wraps, partial
 
@@ -14,6 +11,7 @@ try:
 except AttributeError:
     # e.g. we are on windows
     file_dispatcher = None
+    from .hacks.socket_pipe import socket_pipe
 
 from .channel import Channel
 from .message import MultiplexerMessage
@@ -109,7 +107,7 @@ class ConnectionsManager(object):
 
         else:
             # create socket-based task notifier
-            read_end, write_end = _socket_pipe()
+            read_end, write_end = socket_pipe()
             _TaskNotifier(sock=read_end, map=self._channel_map)
             self._task_notifier_pipe = write_end.makefile('w', 0)
 
@@ -172,44 +170,4 @@ class _TaskNotifier(file_dispatcher if file_dispatcher is not None else
     def writable(self):
         return False
 
-
-def _socket_pipe():
-    """Like ``os.pipe()`` but creates sockets instead of connected file
-    descriptors. To be used on impaired platforms that do not support
-    ``select`` over pipes (e.g. Windows). """
-
-    # Create read0end acceptor.
-    read_acceptor = socket.socket()
-    read_acceptor.bind(('127.0.0.1', 0))
-    read_acceptor.listen(10)
-    read_acceptor.setblocking(False)
-
-    # Create writer and connect it
-    writer = socket.socket()
-    writer.connect(read_acceptor.getsockname())
-
-    # Wait for connection from the right socket
-    for _ in xrange(10):
-        reader, writer_address = read_acceptor.accept()
-        if writer_address != writer.getsockname():
-            sys.stderr.write(__name__ + "._socket_pipe: Waring: port "
-                    "scanning detected.\n")
-            reader.close()
-            continue
-        break
-    else:
-        raise RuntimeError("_socket_pipe: did not receive writer connection.")
-
-    read_acceptor.close()
-
-    # Verify, that the connected socket is really the right one.
-    test_message = str(random.random())
-    writer.sendall(test_message)
-    while test_message:
-        test_chunk = reader.recv(len(test_message))
-        if not test_chunk or not test_message.startswith(test_chunk):
-            raise RuntimeError("_socket_pipe: invalid test data received.")
-        test_message = test_message[len(test_chunk):]
-
-    return reader, writer
 
