@@ -13,21 +13,17 @@ from .testlib_mxserver import SimpleMxServerThread, JmxServerThread, \
 
 def test_client_shutdown():
     c = Client(type=317)
-    # no shutdown
-
-    c = Client(type=317)
-    c.shutdown()
+    # no close
 
     c = Client(type=317)
     c.close()
 
     c = Client(type=317)
-    c.shutdown()
+    c.close()
+
+    c = Client(type=317)
+    c.close()
     c.close() # redundant
-
-    c = Client(type=317)
-    c.close()
-    c.shutdown() # redundant
 
     with contextlib.closing(Client(type=317)):
         pass

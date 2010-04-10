@@ -23,20 +23,20 @@ class _ThreadEnabledServerMixin(object):
     @classmethod
     def run_threaded(cls, *args, **kwargs):
         server = cls(*args, **kwargs)
-        thread = Thread(target=server.run)
+        thread = Thread(target=server._run)
         server.thread = thread
         thread.setDaemon(True)
         thread.start()
         return server
 
-    def run(self):
+    def _run(self):
         raise NotImplementedError("Subclass responsibility")
 
-    def shutdown(self):
+    def _shutdown(self):
         raise NotImplementedError("Subclass responsibility")
 
     def close(self):
-        self.shutdown()
+        self._shutdown()
         self.thread.join()
 
 
@@ -55,7 +55,7 @@ class SimpleMxServerThread(_ThreadEnabledServerMixin, object):
         self._client = None
         self._shutdown_called = False
 
-    def run(self):
+    def _run(self):
         try:
             while True:
                 with self._lock:
@@ -80,7 +80,7 @@ class SimpleMxServerThread(_ThreadEnabledServerMixin, object):
             else:
                 raise
 
-    def shutdown(self):
+    def _shutdown(self):
         with self._lock:
             self._shutdown_called = True
         # wakeup listening thread by issuing a connect
@@ -152,11 +152,11 @@ class JmxServerThread(_ThreadEnabledServerMixin, object):
     @classmethod
     def run_threaded(cls, *args, **kwargs):
         server = cls(*args, **kwargs)
-        server.run()
+        server._run()
         server.thread = _SubprocessPseudoThread(server.subproc)
         return server
 
-    def run(self):
+    def _run(self):
         self._wait_connectible()
         if self.subproc.poll() is not None:
             raise RuntimeError("JMX server is dead")
@@ -184,8 +184,8 @@ class JmxServerThread(_ThreadEnabledServerMixin, object):
         sock.close()
         return True
 
-    def shutdown(self):
-        self.subproc.terminate()
+    def _shutdown(self):
+        self.subproc.terminate() # FIXME requires python 2.6+
 
 def create_mx_server_context(impl=JmxServerThread):
     return contextlib.closing(impl.run_threaded())

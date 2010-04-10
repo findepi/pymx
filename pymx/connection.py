@@ -67,8 +67,8 @@ class ConnectionsManager(object):
     _io_thread = None
     """An IO thread object. Never accessed from IO thread. """
 
-    _shutting_down = False
-    """Specifies shutdown order has already been issued. """
+    _is_closing = False
+    """Specifies close order has already been issued. """
 
     def __init__(self, welcome_message):
         object.__init__(self)
@@ -144,11 +144,11 @@ class ConnectionsManager(object):
                 "this code must be called by IO thread only"
         Channel(address=address, manager=self)
 
-    def shutdown(self):
+    def close(self):
         with self._lock:
-            if self._shutting_down:
+            if self._is_closing:
                 return
-            self._shutting_down = True
+            self._is_closing = True
         self._shutdown()
         self._io_thread.join()
 

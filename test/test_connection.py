@@ -36,7 +36,7 @@ def test_create_connections_manager():
 def test_testlib_mxserver():
     for impl in (SimpleMxServerThread, JmxServerThread):
         server = impl.run_threaded()
-        server.shutdown()
+        server.close()
         server.thread.join()
 
 def test_testlib_create_mx_server_context():
@@ -77,7 +77,7 @@ def test_manager_connect():
         manager = create_connections_manager()
         manager.connect(server.server_address)
         time.sleep(0.07) # TODO wait for connection (with timeout)
-        manager.shutdown()
+        manager.close()
         assert sum(server.message_counters.values()) == 1, \
                 server.message_counters
         assert server.message_counters[2] == 1

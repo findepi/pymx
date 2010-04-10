@@ -57,9 +57,9 @@ class Client(object):
     def receive(self, timeout=None):
         raise NotImplementedError
 
-    def shutdown(self):
-        self._manager.shutdown()
-
     def close(self):
-        self.shutdown()
+        self._manager.close()
+
+    def __del__(self):
+        self.close()
 
