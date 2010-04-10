@@ -1,18 +1,17 @@
+from __future__ import absolute_import, with_statement
+
 import time
 import asyncore
 import socket
 import contextlib
 
-from nose.tools import eq_, assert_almost_equal
-
 from pymx.connection import ConnectionsManager, _socket_pipe
 from pymx.protocol import WelcomeMessage
 from pymx.message import MultiplexerMessage
-from pymx.protobuf import dict_message
 from pymx.channel import Channel
-from pymx.client import Client
 
-from .testlib_mxserver import SimpleMxServerThread, JmxServerThread
+from .testlib_mxserver import SimpleMxServerThread, JmxServerThread, \
+        create_mx_server_context
 
 def test_socket_pipe():
     reader, writer = _socket_pipe()
@@ -35,42 +34,46 @@ def test_create_connections_manager():
     create_connections_manager()
 
 def test_testlib_mxserver():
-    server = SimpleMxServerThread.run_threaded()
-    server.shutdown()
-    server.thread.join()
+    for impl in (SimpleMxServerThread, JmxServerThread):
+        server = impl.run_threaded()
+        server.shutdown()
+        server.thread.join()
 
-def test_testlib_mxserver_connect():
-    server = SimpleMxServerThread.run_threaded()
-    so = socket.socket()
-    so.connect(server.server_address)
-    server.shutdown()
-    server.thread.join()
+def test_testlib_create_mx_server_context():
+    yield check_mx_server_context, {'impl': SimpleMxServerThread}
+    yield check_mx_server_context, {'impl': JmxServerThread}
+    yield check_mx_server_context, {}
 
+def check_mx_server_context(kwargs):
+    with create_mx_server_context(**kwargs) as server:
+        pass
+
+    with create_mx_server_context(**kwargs) as server:
+        so = socket.socket()
+        so.connect(server.server_address)
 
 def test_channel_connect():
-    server = SimpleMxServerThread.run_threaded()
 
     class Dict(dict):
         pass
 
     class Manager(object):
+        def __init__(self):
+            self.channel_map = Dict()
+
         handle_connect_called = False
         def handle_connect(self, channel):
             self.handle_connect_called = True
             channel.close()
 
-    manager = Manager()
-    manager.channel_map = Dict()
-
-    Channel(manager=manager, address=server.server_address)
-    asyncore.loop(map=manager.channel_map)
-
-    assert manager.handle_connect_called
-    server.shutdown()
-    server.thread.join()
+    with create_mx_server_context(impl=SimpleMxServerThread) as server:
+        manager = Manager()
+        Channel(manager=manager, address=server.server_address)
+        asyncore.loop(map=manager.channel_map)
+        assert manager.handle_connect_called
 
 def test_manager_connect():
-    with contextlib.closing(SimpleMxServerThread.run_threaded()) as server:
+    with create_mx_server_context(impl=SimpleMxServerThread) as server:
         manager = create_connections_manager()
         manager.connect(server.server_address)
         time.sleep(0.07) # TODO wait for connection (with timeout)
@@ -78,22 +81,4 @@ def test_manager_connect():
         assert sum(server.message_counters.values()) == 1, \
                 server.message_counters
         assert server.message_counters[2] == 1
-
-def test_client_connect():
-    yield check_client_connect, SimpleMxServerThread
-    yield check_client_connect, JmxServerThread
-
-def check_client_connect(server_impl):
-    with contextlib.closing(server_impl.run_threaded()) as server:
-        client = Client(type=317)
-        eq_(client.type, 317)
-        client.connect(server.server_address)
-        time.sleep(0.07) # TODO wait for connection (with timeout)
-
-        msg = client.create_message(id=5)
-        assert_almost_equal(msg.timestamp, time.time(), -1)
-        eq_(dict(dict_message(msg), timestamp=None), {'timestamp': None, 'id':
-            5, 'from': client.instance_id})
-
-        client.shutdown()
 

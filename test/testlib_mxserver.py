@@ -9,6 +9,7 @@ import time
 import random
 from threading import Thread, RLock
 import subprocess
+import contextlib
 
 from pkg_resources import resource_filename
 from distutils.spawn import find_executable
@@ -186,3 +187,5 @@ class JmxServerThread(_ThreadEnabledServerMixin, object):
     def shutdown(self):
         self.subproc.terminate()
 
+def create_mx_server_context(impl=JmxServerThread):
+    return contextlib.closing(impl.run_threaded())
