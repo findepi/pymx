@@ -7,6 +7,7 @@ from threading import RLock, Thread, currentThread
 from functools import wraps, partial
 from collections import deque
 from Queue import Queue, Empty
+from functools import partial
 
 import asyncore
 try:
@@ -20,6 +21,8 @@ except AttributeError:
 from .channel import Channel
 from .message import MultiplexerMessage
 from .frame import create_frame_header
+# TODO require heartbits
+from .protocol import HEARTBIT_WRITE_INTERVAL, HEARTBIT_READ_INTERVAL
 from .protocol_constants import MessageTypes
 from .protobuf import make_message
 from .timer import Timer
@@ -92,6 +95,8 @@ class ConnectionsManager(object):
 
         self._task_notifier_pipe = None
         self._create_task_notifier()
+
+        self._timer = Timer()
 
         self._io_thread = None
         self._start_io_thread()
@@ -174,7 +179,16 @@ class ConnectionsManager(object):
 
     @_in_io_thread_only
     def handle_connect(self, channel):
+        assert channel.connected
         channel.enque_outgoing(self._welcome_frame)
+        self._send_heartbit(channel)
+
+    def _send_heartbit(self, channel):
+        if channel.connected:
+            channel.enque_outgoing(make_message(MultiplexerMessage,
+                type=MessageTypes.HEARTBIT))
+            self._timer.schedule(HEARTBIT_WRITE_INTERVAL,
+                    partial(self._send_heartbit, channel))
 
     @_schedule_in_io_thread
     def send_message(self, message, connection):
@@ -187,7 +201,11 @@ class ConnectionsManager(object):
         if connection is ConnectionsManager.ALL:
             return self._all_channels
         if connection is ConnectionsManager.ONE:
-            return (choice(_listify(self._all_channels)),)
+            channels = _listify(self._all_channels)
+            if not channels:
+                raise RuntimeError(
+                        "send_message(via ONE) called when no active channels")
+            return (choice(channels),)
         raise ValueError("Could not select channel for connection", connection)
 
 

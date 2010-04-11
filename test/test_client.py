@@ -7,6 +7,7 @@ from nose.tools import eq_, assert_almost_equal
 
 from pymx.protobuf import dict_message
 from pymx.client import Client
+from pymx.protocol import HEARTBIT_READ_INTERVAL
 
 from .testlib_mxserver import SimpleMxServerThread, JmxServerThread, \
         create_mx_server_context
@@ -51,7 +52,17 @@ def test_client_connect_ping_self():
         with contextlib.closing(Client(type=317)) as client:
             client.connect(server.server_address)
             time.sleep(0.07) # TODO wait for connection (with timeout)
-            msg = client.create_message(to=client.instance_id, type=0)
-            client.send_message(msg)
-            other = client.receive(timeout=5)
-            eq_(msg, other)
+            _check_ping_self(client)
+
+def test_sending_hearbits():
+    with create_mx_server_context() as server:
+        with contextlib.closing(Client(type=317)) as client:
+            client.connect(server.server_address)
+            time.sleep(HEARTBIT_READ_INTERVAL + 3)
+            _check_ping_self(client)
+
+def _check_ping_self(client):
+    msg = client.create_message(to=client.instance_id, type=0)
+    client.send_message(msg)
+    other = client.receive(timeout=5)
+    eq_(msg, other)
