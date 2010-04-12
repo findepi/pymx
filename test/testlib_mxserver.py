@@ -7,7 +7,7 @@ import errno
 import signal
 import time
 import random
-from threading import Thread, RLock
+from threading import RLock
 import subprocess
 import contextlib
 
@@ -17,13 +17,13 @@ from distutils.spawn import find_executable
 from pymx.frame import Deframer
 from pymx.protobuf import parse_message
 from pymx.message import MultiplexerMessage
-
+from .testlib_threads import TestThread
 
 class _ThreadEnabledServerMixin(object):
     @classmethod
     def run_threaded(cls, *args, **kwargs):
         server = cls(*args, **kwargs)
-        thread = Thread(target=server._run)
+        thread = TestThread(target=server._run)
         server.thread = thread
         thread.setDaemon(True)
         thread.start()
