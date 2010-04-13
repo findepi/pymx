@@ -96,6 +96,24 @@ def test_two_clients():
         _check_ping(client_a, to=client_b)
         _check_ping(client_a, to=client_b, event=True)
 
+@timed(5)
+def test_deduplication():
+    with nested(create_mx_server_context(), create_mx_server_context(),
+            create_test_client()) as (server_a, server_b, client):
+        wait_all(client.connect(server_a.server_address),
+                client.connect(server_b.server_address), timeout=0.5)
+        msg = client.create_message(to=client.instance_id, type=0)
+        client.event(msg)
+        first = client.receive(timeout=1)
+        eq_(msg, first)
+        try:
+            second = client.receive(timeout=1)
+        except OperationTimedOut:
+            pass
+        else:
+            eq_(first, second)
+            assert False, "duplicated message received"
+
 def _echo(client):
     msg = client.receive(timeout=5)
     response = client.create_message(to=msg.from_, message=msg.message,

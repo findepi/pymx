@@ -29,7 +29,7 @@ from .timer import Timer
 from .atomic import Atomic, synchronized
 from .timeout import Timeout
 from .future import Future
-
+from .limitedset import LimitedSet
 
 def _listify(seq):
     """Returns ``seq`` or ``list(seq)`` whichever supports ``__len__`` magic
@@ -89,6 +89,9 @@ class ConnectionsManager(object):
     _query_responses = None
     """Dictionary of queues with respones to multiplexer queries."""
 
+    _recent_messages_pool = None
+    """Deduplication leaking set."""
+
     def __init__(self, welcome_message):
         object.__init__(self)
         self._lock = RLock()
@@ -96,6 +99,7 @@ class ConnectionsManager(object):
         self._tasks = []
         self._incoming_messages = Queue()
         self._query_responses = {}
+        self._recent_messages_pool = LimitedSet()
 
         assert isinstance(welcome_message, MultiplexerMessage)
         welcome_message = welcome_message.SerializeToString()
@@ -256,6 +260,8 @@ class ConnectionsManager(object):
 
     @_in_io_thread_only
     def handle_message(self, message):
+        if not self._recent_messages_pool.add(message.id):
+            return
         handler = self.__message_handlers.get(message.type,
                 self.__default_message_handler)
         handler(self, message)
