@@ -74,7 +74,10 @@ def test_manager_connect():
     with create_mx_server_context(impl=SimpleMxServerThread) as server:
         manager = create_connections_manager()
         manager.connect(server.server_address)
-        time.sleep(0.07) # TODO wait for connection (with timeout)
+        # we can't use conect future, as we can't rely on SimpleMxServerThread
+        # correctly sending welcome messages
+        time.sleep(0.07)
+
         manager.close()
         assert sum(server.message_counters.values()) == 1, \
                 server.message_counters

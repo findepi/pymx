@@ -17,13 +17,14 @@ class Channel(dispatcher):
     read_buffer = 8192
     ignore_log_types = ()
 
-    def __init__(self, manager, address):
+    def __init__(self, manager, address, connect_future=None):
         map = manager.channel_map
         self._manager = weakref.ref(manager)
         dispatcher.__init__(self, map=map)
         self._outgoing_buffer = BytesFIFO(join_upto=self.write_buffer)
         self._deframer = Deframer()
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
+        self._connect_future = connect_future
         self.connect(address)
 
     @property
@@ -52,9 +53,9 @@ class Channel(dispatcher):
         if not self._outgoing_buffer:
             return
         written = self.send(self._outgoing_buffer.next_chunk)
-        assert written > 0
-        popped = self._outgoing_buffer.get(written)
-        assert len(popped) == written, (popped, written)
+        if written:
+            popped = self._outgoing_buffer.get(written)
+            assert len(popped) == written, (popped, written)
 
     def enque_outgoing(self, bytes):
         if isinstance(bytes, Message):
@@ -66,4 +67,8 @@ class Channel(dispatcher):
         self.handle_write()
 
     def _receive_message(self, message):
+        if self._connect_future is not None:
+            # first message is always CONNECTION_WELCOME sent by the server
+            self._connect_future.set(True)
+            self._connect_future = None
         self.manager.handle_message(message)
