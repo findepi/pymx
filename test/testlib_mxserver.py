@@ -69,11 +69,15 @@ class SimpleMxServerThread(_ThreadEnabledServerMixin, object):
                         break
                     else:
                         self._client = client
-                client_welcome = self._read_message(client)
-                self._inc_counters(client_welcome)
-                client.close()
+                try:
+                    client_welcome = self._read_message(client)
+                except socket.error:
+                    pass
+                else:
+                    self._inc_counters(client_welcome)
                 with self._lock:
                     self._client = None
+                client = None
         except socket.error, e:
             if e.errno in (errno.EINVAL, errno.EBADF):
                 pass
