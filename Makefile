@@ -27,6 +27,9 @@ test/test_constants.py: test/test.rules
 	java -jar $(JMX_JAR) compile-constants -python -output "$@" -input "$^"
 
 doc: $(DOCUMENTATION)
+	epydoc --docformat restructuredtext --parse-only --no-private --include-log \
+	    --debug -n "pyMX" -o doc/code pymx
+	@echo "Code documentation is in: 'doc/code'"
 
 build: constants protoc
 	python setup.py build
