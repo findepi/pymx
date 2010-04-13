@@ -39,7 +39,7 @@ def _schedule_in_io_thread(method):
     @wraps(method)
     def schedule_in_io_thread_wrapper(self, *args, **kwargs):
         if currentThread() is self._io_thread:
-            return method(*args, **kwargs)
+            return method(self, *args, **kwargs)
         else:
             self._enque_io_task(method, self, *args, **kwargs)
     return schedule_in_io_thread_wrapper
