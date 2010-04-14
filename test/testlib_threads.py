@@ -20,7 +20,8 @@ class TestThread(Thread):
                         ' | ' + line for line in format_exc().splitlines())))
 
 
-    def join(self):
-        Thread.join(self)
+    def join(self, timeout=60):
+        Thread.join(self, timeout)
+        assert not self.isAlive()
         if self._exc is not None:
             raise self._exc
