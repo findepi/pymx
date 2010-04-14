@@ -75,7 +75,7 @@ class Client(object):
         return self.send_message(message, connection=ConnectionsManager.ALL)
 
     @transform_message
-    def query(self, message, type, timeout, fields=None):
+    def query(self, message, type, timeout, fields=None, skip_resend=False):
         assert not isinstance(message, MultiplexerMessage)
         fields = dict(fields or {}, message=message, type=type)
 
@@ -90,7 +90,14 @@ class Client(object):
             if response is not None:
                 if response.type != MessageTypes.DELIVERY_ERROR:
                     return response
-                first_request_delivery_errored = True
+                if skip_resend:
+                    raise OperationFailed("Delivery Error respons for query "
+                            "#%d" % query.id)
+                else:
+                    first_request_delivery_errored = True
+            elif skip_resend:
+                raise OperationTimedOut("No response received for query #%d",
+                        query.id)
 
             # Second phase - searching for a working backend.
             search = self.create_message(message=
