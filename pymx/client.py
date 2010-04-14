@@ -2,6 +2,7 @@ import time
 from random import randint
 from functools import partial
 from Queue import Empty
+from operator import itemgetter
 
 from .protobuf import make_message
 from .message import MultiplexerMessage
@@ -124,7 +125,8 @@ class Client(object):
                 raise OperationFailed("Could not broadcast backend search")
             searches_timeout = Timeout(timeout)
             while searches_timeout.remaining:
-                response = query_manager.receive(searches_timeout.timeout,
+                response, channel = query_manager.receive(
+                        searches_timeout.timeout, with_channel=True,
                         ignore_types=(MessageTypes.REQUEST_RECEIVED,))
                 if response is None:
                     raise OperationTimedOut("No response to query #%d and "
@@ -167,7 +169,7 @@ class Client(object):
                     query_manager.unregister_id(search.id)
                     retransmitted = self.create_message(**fields)
                     query_manager.register_id(retransmitted.id)
-                    self.send_message(retransmitted) # TODO use the same channel
+                    self.send_message(retransmitted, connection=channel)
                     break
                 else:
                     raise OperationFailed("Unrecognized message returned from "
@@ -197,9 +199,16 @@ class Client(object):
             raise OperationTimedOut("No response received for query #%d and "
                     "retransmitted query #%d" % (query.id, retransmitted.id))
 
-    @transform_message
-    def receive(self, timeout=None):
-        response = self._manager.receive(timeout=timeout)
+    def receive(self, timeout=None, with_connection=False):
+        message, connection = self._receive(timeout=timeout)
+        if with_connection:
+            return message, connection
+        return message
+
+    @transform_message(message_getter=itemgetter(0))
+    def _receive(self, timeout=None):
+        response = self._manager.receive(timeout=timeout,
+                with_channel=True)
         if response is None:
             raise OperationTimedOut
         return response

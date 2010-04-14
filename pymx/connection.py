@@ -225,14 +225,16 @@ class ConnectionsManager(object):
                 raise RuntimeError(
                         "send_message(via ONE) called when no active channels")
             return (choice(channels),)
+        if isinstance(connection, Channel):
+            return (connection,)
         raise ValueError("Could not select channel for connection", connection)
 
-    def __handle_connection_welcome(self, message):
+    def __handle_connection_welcome(self, message, channel):
         # TODO could validate it's the first CONNECTION_WELCOME on this
         # channel
         pass
 
-    def __handle_heartbit(self, message):
+    def __handle_heartbit(self, message, channel):
         pass
 
     @synchronized
@@ -250,8 +252,9 @@ class ConnectionsManager(object):
         return old
 
     @staticmethod # this function is called with explicit 'self'
-    def __default_message_handler(self, message):
-        self.__get_queue_for_message(message).put(message)
+    def __default_message_handler(self, message, channel):
+        self.__get_queue_for_message(message).put({'message': message,
+            'channel': channel})
 
     __message_handlers = {
             MessageTypes.CONNECTION_WELCOME: __handle_connection_welcome,
@@ -259,12 +262,12 @@ class ConnectionsManager(object):
         }
 
     @_in_io_thread_only
-    def handle_message(self, message):
+    def handle_message(self, message, channel):
         if not self._recent_messages_pool.add(message.id):
             return
         handler = self.__message_handlers.get(message.type,
                 self.__default_message_handler)
-        handler(self, message)
+        handler(self, message, channel)
 
     def query_context_manager(self, message_id=None):
         return _QueryContextManager(self, message_id=message_id)
@@ -274,13 +277,14 @@ class ConnectionsManager(object):
 
 
 #def receive(queue, timeout, ignore_types=(), filter=None):
-def receive(queue, timeout, ignore_types=(),
+def receive(queue, timeout, ignore_types=(), with_channel=False,
         message_acceptor=lambda received: True):
     timer = Timeout(timeout)
     #filter = (filter or {}).items()
     while timer.remaining:
         try:
-            received = queue.get(timeout=timer.timeout)
+            incoming = queue.get(timeout=timer.timeout)
+            received, channel = incoming['message'], incoming['channel']
         except Empty:
             break
 
@@ -301,6 +305,8 @@ def receive(queue, timeout, ignore_types=(),
             continue
 
         # received message passed all tests
+        if with_channel:
+            return received, channel
         return received
 
     return None
