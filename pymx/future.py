@@ -5,10 +5,13 @@ from traceback import format_exception
 
 from .timeout import Timeout
 
-class _FutureError(Exception):
+class FutureException(Exception):
     pass
 
-class FutureTimeout(Exception):
+class FutureError(FutureException):
+    pass
+
+class FutureTimeout(FutureException):
     pass
 
 class Future(object):
@@ -26,6 +29,10 @@ class Future(object):
         """Set internal value. Not safe to call after `set` or `set_error` have
         been called. """
         assert not self._has_value.isSet()
+        assert not isinstance(value, FutureError)
+        self._set(value)
+
+    def _set(self, value):
         self._value = value
         self._has_value.set()
 
@@ -34,11 +41,11 @@ class Future(object):
         `set_error` have been called. """
         try:
             if message is not None:
-                self.set(_FutureError(message))
+                self._set(FutureError(message))
             else:
                 if exc is None:
                     exc = exc_info()
-                self.set(_FutureError("Future error:\n" +
+                self._set(FutureError("Future error:\n" +
                     ''.join(format_exception(*exc))))
         finally:
             exc = None
@@ -48,7 +55,7 @@ class Future(object):
         """Get value or raise exception if an error occurred. Not safe to
         called before `wait` has been called. """
         value = self._value
-        if isinstance(value, _FutureError):
+        if isinstance(value, FutureError):
             raise value
         return value
 

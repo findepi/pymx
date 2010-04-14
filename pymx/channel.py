@@ -27,6 +27,12 @@ class Channel(dispatcher):
         self._connect_future = connect_future
         self.connect(address)
 
+    def __del__(self):
+        if self._connect_future is not None:
+            self._connect_future.set_error(message="No connection could be "
+                    "estabilished")
+            self._connect_future = None
+
     @property
     def manager(self):
         manager = self._manager()

@@ -64,9 +64,23 @@ class Client(object):
         kwargs.setdefault('timestamp', int(time.time()))
         return make_message(MultiplexerMessage, **kwargs)
 
-    def connect(self, *args, **kwargs):
-        # make this optionally synchronous
-        return self._manager.connect(*args, **kwargs)
+    def connect(self, address, sync=False, timeout=5):
+        """Initiate connection to Multiplexer server.
+
+        Returns `Future`, which will be set when Multiplexer connection
+        hand-shake is completed.
+
+        :Parameters:
+            - `address`: an address suitable for ``socket.connect`` call
+              (``host, port`` pair)
+            - `sync`: (keyword-only) if true, wait for connection
+            - `timeout`: (keyword-only) timeout used, when `sync` is true
+              (``None`` means no timeout)
+        """
+        future = self._manager.connect(address)
+        if sync:
+            future.wait(timeout)
+        return future
 
     def send_message(self, message, connection=ConnectionsManager.ONE):
         return self._manager.send_message(message, connection=connection)

@@ -4,12 +4,12 @@ import time
 from contextlib import closing, nested
 from functools import partial
 
-from nose.tools import eq_, assert_almost_equal, timed
+from nose.tools import eq_, assert_almost_equal, timed, raises
 
 from pymx.protobuf import dict_message
 from pymx.client import Client, OperationTimedOut
 from pymx.protocol import HEARTBIT_READ_INTERVAL
-from pymx.future import wait_all
+from pymx.future import wait_all, FutureError
 
 from .testlib_threads import TestThread
 from .testlib_mxserver import SimpleMxServerThread, JmxServerThread, \
@@ -95,6 +95,16 @@ def test_two_clients():
                 client_b.connect(server.server_address), timeout=0.5)
         _check_ping(client_a, to=client_b)
         _check_ping(client_a, to=client_b, event=True)
+
+@timed(2)
+def test_synchronous_connect():
+    with create_test_client() as client:
+        # should not run Multiplexer server on port 1
+        future = client.connect(('127.0.0.1', 1))
+        raises(FutureError)(lambda: future.wait(1))()
+    with create_test_client() as client:
+        raises(FutureError)(
+                lambda: client.connect(('127.0.0.1', 1), sync=True))()
 
 @timed(5)
 def test_deduplication():
