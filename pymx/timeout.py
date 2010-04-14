@@ -7,10 +7,11 @@ class Timeout(object):
 
     Example use:
 
-    ..python:
+    .. python::
         q = Queue()
         timer = Timeout(5)
         while timer.remaining:
+            # wait for at most 5 seconds for an acceptable element
             x = q.get(timeout=timer.timeout)
             if accept(x):
                 return x

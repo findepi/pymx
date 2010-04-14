@@ -28,7 +28,7 @@ test/test_constants.py: test/test.rules
 
 doc: $(DOCUMENTATION)
 	epydoc --docformat restructuredtext --parse-only --no-private --include-log \
-	    --debug -n "pyMX" -o doc/code pymx
+	    --verbose --name="pyMX" --output=doc/code pymx
 	@echo "Code documentation is in: 'doc/code'"
 
 build: constants protoc
