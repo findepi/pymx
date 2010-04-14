@@ -7,16 +7,32 @@ Copyright Azouk Network Ltd. <http://www.azouk.com/>
 from google.protobuf.message import Message, DecodeError, EncodeError
 from google.protobuf.reflection import containers
 
-def initialize_message(_message, **kwargs):
-    """Initializes message `_message` with `**kwargs`. `kwargs` must be a
-    dictionary ``message field => initializer``. Valid initializers are:
-    - for a scalar field: scalar value
-    - for a list of scalars: list of scalar values
-    - for a message field: a message or a dict
-    - for a list of messages: a list of messages or dicts (can be mixed)
+def initialize_message(*args, **kwargs):
+    """Initialize a message with fields passed as python built-ins objects.
+
+    Fields are specified as a dict (``fields dict``) mapping ``message field
+    name`` to ``initializer``. Valid initializers include:
+
+        - for a scalar field: scalar value
+        - for a list of scalars: list of scalar values
+        - for a message field: a message or a dict
+        - for a list of messages: a list of messages or dicts (can be mixed)
+
+    :Parameters:
+        - `first-positional-argument`: a message, which will be updated
+        - `second-positional-argument`: optional fields dict
+        - `keyword-arguments`: field initializers
     """
 
-    message = _message
+    if len(args) == 1:
+        message, = args
+    elif len(args) == 2:
+        message, kw = args
+        kwargs = dict(kw, **kwargs)
+    else:
+        raise TypeError("initialize_message() takes at most 2 positional "
+                "arguments (%d given)" % len(args))
+
     for key, value in kwargs.items():
 
         target = getattr(message, key)
@@ -61,11 +77,18 @@ def initialize_message(_message, **kwargs):
 
     return message
 
-def make_message(_type, **kwargs):
-    """Create a message of type `_type` with field defined by `kwargs`. See
-    `initialize_message` for a documentation on using `kwargs`. """
-    message = _type()
-    initialize_message(message, **kwargs)
+def make_message(*args, **kwargs):
+    """Create a message and initialize it.
+
+    Returns newly created message.
+
+    Parameters are the same as for `initialize_message` except first argument
+    must be a message class (subclass of ``google.protobuf.message.Message``)
+    instead of message instance.
+    """
+    message = args[0]()
+    args = (message,) + args[1:]
+    initialize_message(*args, **kwargs)
     return message
 
 def dict_message(message, all_fields=False, recursive=False):
