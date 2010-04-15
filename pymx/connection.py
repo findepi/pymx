@@ -8,16 +8,8 @@ from functools import wraps, partial
 from collections import deque
 from Queue import Queue, Empty
 from functools import partial
-
 import asyncore
-try:
-    file_dispatcher = asyncore.file_dispatcher
-    assert file_dispatcher
-except AttributeError:
-    # e.g. we are on windows
-    file_dispatcher = None
-    from .hacks.socket_pipe import socket_pipe
-
+from google.protobuf.message import Message
 from .channel import Channel
 from .message import MultiplexerMessage
 from .frame import create_frame_header
@@ -30,6 +22,15 @@ from .atomic import Atomic, synchronized
 from .timeout import Timeout
 from .future import Future
 from .limitedset import LimitedSet
+
+try:
+    file_dispatcher = asyncore.file_dispatcher
+    assert file_dispatcher
+except AttributeError:
+    # e.g. we are on windows
+    file_dispatcher = None
+    from .hacks.socket_pipe import socket_pipe
+
 
 def _listify(seq):
     """Returns ``seq`` or ``list(seq)`` whichever supports ``__len__`` magic
@@ -142,7 +143,7 @@ class ConnectionsManager(object):
 
     def _start_io_thread(self):
         self._io_thread = Thread(target=self._io_main,
-                name='C-Manager-IO-Thread-#' +
+                name='ConnectionsManager-IO-Thread-#' +
                 str(ConnectionsManager.__creation_counter.inc()))
         self._io_thread.setDaemon(True)
         self._io_thread.start()
@@ -209,6 +210,9 @@ class ConnectionsManager(object):
     @_schedule_in_io_thread
     def send_message(self, future, message, connection):
         with future:
+            if isinstance(message, Message):
+                message = message.SerializeToString()
+                message = create_frame_header(message) + message
             channels = self._get_channels(connection)
             i = -1
             for i, channel in enumerate(channels):
