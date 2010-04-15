@@ -141,6 +141,7 @@ class Client(object):
         """
         assert not isinstance(message, MultiplexerMessage)
         fields = dict(fields or {}, message=message, type=type)
+        workflow = fields.get('workflow')
 
         with self._manager.query_context_manager() as query_manager:
             # First phase - normal send & receive.
@@ -170,7 +171,8 @@ class Client(object):
             search = self.create_message(message=
                     make_message(BackendForPacketSearch,
                         packet_type=type).SerializeToString(),
-                    type=MessageTypes.BACKEND_FOR_PACKET_SEARCH)
+                    type=MessageTypes.BACKEND_FOR_PACKET_SEARCH,
+                    workflow=workflow)
             query_manager.register_id(search.id)
             searches_count = self.event(search)
             if not searches_count:
