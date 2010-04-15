@@ -14,6 +14,7 @@ from pymx.future import wait_all, FutureError
 from .testlib_threads import TestThread
 from .testlib_mxserver import SimpleMxServerThread, JmxServerThread, \
         create_mx_server_context
+from .testlib_client import create_test_client
 
 def test_client_shutdown():
     c = Client(type=317)
@@ -30,6 +31,9 @@ def test_client_shutdown():
     c.close() # redundant
 
     with closing(Client(type=317)):
+        pass
+
+    with create_test_client():
         pass
 
 def test_client_connect():
@@ -84,9 +88,6 @@ def test_client_connect_event_self():
         with create_test_client() as client:
             client.connect(server.server_address).wait(0.2)
             _check_ping(client, event=True)
-
-def create_test_client(type=317):
-    return closing(Client(type=type))
 
 def test_two_clients():
     with nested(create_mx_server_context(), create_test_client(),

@@ -60,6 +60,11 @@ type {
 }
 
 type {
+    type: 112
+    name: "PICKLE_RESPONSE"
+}
+
+type {
     type: 113
     name: "REQUEST_RECEIVED"
     comment: "packet sent by the backend immediatelly after receiving a request and stright to the requesting peer"

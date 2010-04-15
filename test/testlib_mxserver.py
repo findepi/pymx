@@ -150,6 +150,10 @@ class JmxServerThread(_ThreadEnabledServerMixin, object):
         if not os.path.exists(jmx_config):
             raise RuntimeError("jmx configuration could not be found")
 
+        test_rules = resource_filename(__name__, 'test.rules')
+        if not os.path.exists(test_rules):
+            raise RuntimeError("test.rules could not be found")
+
         java = find_executable('java')
         if java is None:
             raise RuntimeError(
@@ -157,6 +161,7 @@ class JmxServerThread(_ThreadEnabledServerMixin, object):
         jmx_server_command = [java,
                 '-Djava.util.logging.config.file=' + jmx_config,
                 '-jar', jmx_jar, 'server',
+                '-rules', test_rules,
                 '-host', self.server_address[0],
                 '-port', str(self.server_address[1])]
         self.subproc = subprocess.Popen(jmx_server_command)
