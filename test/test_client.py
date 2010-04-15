@@ -97,12 +97,12 @@ def test_two_clients():
         _check_ping(client_a, to=client_b)
         _check_ping(client_a, to=client_b, event=True)
 
-@timed(2)
+@timed(15)
 def test_synchronous_connect():
     with create_test_client() as client:
         # should not run Multiplexer server on port 1
         future = client.connect(('127.0.0.1', 1))
-        raises(FutureError)(lambda: future.wait(1))()
+        raises(FutureError)(lambda: future.wait(10))()
     with create_test_client() as client:
         raises(FutureError)(
                 lambda: client.connect(('127.0.0.1', 1), sync=True))()

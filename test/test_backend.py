@@ -42,15 +42,13 @@ def test_query():
     yield check_query, MultiplexerBackendSubclass
     yield check_query, PicklingMultiplexerBackendSubclass
 
-@timed(4)
 def check_query(backend_factory, backend_kwargs={}):
 
     message = pickle.dumps('some data')
     backend_kwargs.setdefault('type', 380)
 
-    with nested(create_mx_server_context(), create_test_client(), closing(backend_factory(
-        **backend_kwargs))) as (server, client, backend):
-
+    @timed(4)
+    def _run(server, client, backend):
         client.connect(server.server_address, sync=True)
 
         raises(OperationFailed)(lambda: client.query(fields={'to':
@@ -73,6 +71,10 @@ def check_query(backend_factory, backend_kwargs={}):
 
         th.join()
 
+    with nested(create_mx_server_context(), create_test_client(), closing( \
+            backend_factory( **backend_kwargs))) as (server, client, backend):
+        _run(server, client, backend)
+
 def test_query_retransmission():
     for notify in (False, True):
         yield check_query_retransmission, '_be_nice', notify
@@ -81,7 +83,6 @@ def test_query_retransmission():
                 notify
         yield check_query_retransmission, '_send_other', notify
 
-@timed(4)
 def check_query_retransmission(how, notify):
     class MultiplexerBackendSubclass(MultiplexerBackend):
         __first = True
@@ -106,7 +107,6 @@ def check_query_retransmission(how, notify):
             if notify:
                 self.notify_started()
             eq_(mxmsg.type, TestMessageTypes.TEST_REQUEST)
-            eq_(mxmsg.from_, client.instance_id)
             self.__mxmsg = mxmsg
             if self.__first:
                 self.__first = False
@@ -118,7 +118,8 @@ def check_query_retransmission(how, notify):
     backend_factory = MultiplexerBackendSubclass
     backend_kwargs = {'type': TestPeerTypes.TEST_SERVER}
 
-    with create_mx_server_context() as server:
+    @timed(4)
+    def _run():
         with nested(create_test_client(), closing(backend_factory(
             **backend_kwargs))) as (client, backend):
 
@@ -171,3 +172,6 @@ def check_query_retransmission(how, notify):
                 eq_(response.workflow, 'some workflow')
 
             th.join()
+
+    with create_mx_server_context() as server:
+        _run()

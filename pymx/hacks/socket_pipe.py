@@ -18,11 +18,13 @@ def socket_pipe():
 
     # Create writer and connect it
     writer = socket.socket()
+    writer.setblocking(True)
     writer.connect(read_acceptor.getsockname())
 
     # Wait for connection from the right socket
     for _ in xrange(10):
         reader, writer_address = read_acceptor.accept()
+        reader.setblocking(True)
         if writer_address != writer.getsockname():
             sys.stderr.write(__name__ + ".socket_pipe: Waring: port "
                     "scanning detected.\n")
