@@ -1,8 +1,8 @@
 from time import sleep
 
-from pymx.future import Future
+from pymx.future import Future, FutureError
 
-from nose.tools import timed, eq_
+from nose.tools import timed, eq_, raises
 
 from .testlib_threads import TestThread
 
@@ -29,3 +29,16 @@ def test_threaded_future():
     eq_(f.wait(1), 13)
     eq_(f.value, 13)
     th.join()
+
+def test_future_exception():
+    class Exc(Exception):
+        pass
+
+    future = Future()
+    try:
+        with future:
+            raise Exc("nic")
+    except Exc:
+        pass
+
+    raises(FutureError)(future.wait)()

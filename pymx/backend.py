@@ -1,5 +1,11 @@
 """Abstract multiplexer backend functionality. """
 
+__author__ = 'Piotr Findeisen'
+__copyright__ = 'Copyright 2008-2009 Azouk Network Ltd., ' \
+        'bits 2010 Piotr Findeisen'
+__license__ = 'GPLv3'
+
+
 import sys
 from traceback import print_exc, format_exception
 from threading import RLock

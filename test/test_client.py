@@ -107,7 +107,7 @@ def test_synchronous_connect():
         raises(FutureError)(
                 lambda: client.connect(('127.0.0.1', 1), sync=True))()
 
-@timed(5)
+@timed(9)
 def test_deduplication():
     with nested(create_mx_server_context(), create_mx_server_context(),
             create_test_client()) as (server_a, server_b, client):

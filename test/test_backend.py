@@ -6,8 +6,9 @@ from pymx.future import wait_all
 # use backend's pickle -- we compare pickles literally
 from pymx.backend import pickle
 from pymx.protocol_constants import MessageTypes
+from pymx.client import BackendError, OperationTimedOut, OperationFailed
 
-from nose.tools import timed, eq_, nottest
+from nose.tools import timed, eq_, nottest, raises
 
 from .testlib_client import create_test_client
 from .testlib_mxserver import create_mx_server_context
@@ -34,8 +35,10 @@ def test_query():
         def process_pickle(self, data):
             self.send_pickle(data)
 
-    yield check_query, MultiplexerBackend, {'handler': _backend_echo}
-    yield check_query, PicklingMultiplexerBackend, {'handler': lambda x: x}
+    yield check_query, MultiplexerBackend, {'handler':
+            _backend_echo}
+    yield check_query, PicklingMultiplexerBackend, {'handler':
+            lambda x: x}
     yield check_query, MultiplexerBackendSubclass
     yield check_query, PicklingMultiplexerBackendSubclass
 
@@ -45,12 +48,16 @@ def check_query(backend_factory, backend_kwargs={}):
     message = pickle.dumps('some data')
     backend_kwargs.setdefault('type', 380)
 
-    with nested(create_mx_server_context(), create_test_client(),
-            closing(backend_factory(**backend_kwargs))) as (server, client,
-                    backend):
+    with nested(create_mx_server_context(), create_test_client(), closing(backend_factory(
+        **backend_kwargs))) as (server, client, backend):
 
-        wait_all(client.connect(server.server_address),
-                backend.connect(server.server_address), timeout=0.5)
+        client.connect(server.server_address, sync=True)
+
+        raises(OperationFailed)(lambda: client.query(fields={'to':
+            backend.instance_id, 'workflow': 'some workflow'}, message=message,
+            type=1136, timeout=1))()
+
+        backend.connect(server.server_address, sync=True)
 
         th = TestThread(target=backend.handle_one)
         th.setDaemon(True)
@@ -70,7 +77,8 @@ def test_query_retransmission():
     for notify in (False, True):
         yield check_query_retransmission, '_be_nice', notify
         yield check_query_retransmission, '_no_response', notify
-        yield check_query_retransmission, '_raise_exception', notify
+        yield check_query_retransmission, '_raise_exception', \
+                notify
         yield check_query_retransmission, '_send_other', notify
 
 @timed(4)
@@ -110,25 +118,56 @@ def check_query_retransmission(how, notify):
     backend_factory = MultiplexerBackendSubclass
     backend_kwargs = {'type': TestPeerTypes.TEST_SERVER}
 
-    with nested(create_mx_server_context(), create_test_client(),
-            closing(backend_factory(**backend_kwargs))) as (server, client,
-                    backend):
+    with create_mx_server_context() as server:
+        with nested(create_test_client(), closing(backend_factory(
+            **backend_kwargs))) as (client, backend):
 
-        wait_all(client.connect(server.server_address),
-                backend.connect(server.server_address), timeout=0.5)
+            wait_all(client.connect(server.server_address),
+                    backend.connect(server.server_address), timeout=0.5)
 
-        th = TestThread(target=backend.loop)
-        th.setDaemon(True)
-        th.start()
+            th = TestThread(target=backend.start)
+            th.setDaemon(True)
+            th.start()
 
-        response = client.query(fields={'workflow': 'some workflow'},
-                message=message, type=TestMessageTypes.TEST_REQUEST,
-                timeout=1)
+            response = client.query(fields={'workflow': 'some workflow'},
+                    message=message, type=TestMessageTypes.TEST_REQUEST,
+                    timeout=1)
 
-        eq_(response.message, message)
-        eq_(response.type, TestMessageTypes.TEST_RESPONSE)
-        eq_(response.from_, backend.instance_id)
-        eq_(response.to, client.instance_id)
-        eq_(response.workflow, 'some workflow')
+            eq_(response.message, message)
+            eq_(response.type, TestMessageTypes.TEST_RESPONSE)
+            eq_(response.from_, backend.instance_id)
+            eq_(response.to, client.instance_id)
+            eq_(response.workflow, 'some workflow')
 
-        th.join()
+            th.join()
+
+        with nested(create_test_client(), closing(backend_factory(
+            **backend_kwargs))) as (client, backend):
+
+            wait_all(client.connect(server.server_address),
+                    backend.connect(server.server_address), timeout=0.5)
+
+            th = TestThread(target=backend.handle_one)
+            th.setDaemon(True)
+            th.start()
+
+            try:
+                response = client.query(fields={'workflow': 'some workflow'},
+                        message=message, type=TestMessageTypes.TEST_REQUEST,
+                        timeout=1, skip_resend=True)
+
+            except BackendError:
+                assert how == '_raise_exception'
+
+            except OperationTimedOut:
+                assert how in ('_no_response', '_send_other')
+
+            else:
+                assert how == '_be_nice'
+                eq_(response.message, message)
+                eq_(response.type, TestMessageTypes.TEST_RESPONSE)
+                eq_(response.from_, backend.instance_id)
+                eq_(response.to, client.instance_id)
+                eq_(response.workflow, 'some workflow')
+
+            th.join()

@@ -11,9 +11,15 @@ from .protocol import WelcomeMessage, BackendForPacketSearch
 from .protocol_constants import MessageTypes
 from .timeout import Timeout
 from .decorator import parametrizable_decorator
-from .exc import OperationFailed, OperationTimedOut
+from .exc import MultiplexerException
 
 _rand64 = partial(randint, 0, 2**64 - 1)
+
+class OperationFailed(MultiplexerException):
+    pass
+
+class OperationTimedOut(OperationFailed):
+    pass
 
 class BackendError(OperationFailed):
     """Error reported by BACKEND is transformed into `BackendError` exception

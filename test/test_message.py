@@ -11,6 +11,16 @@ from .testlib_encoded_messages import encoded_messages
 from .TestMessages_pb2 import VariousFields, VariousFieldsList
 
 def test_make_message():
+    def _make_message_kwargs_as_dict(type, *args, **kwargs):
+        if args:
+            return make_message(type, *args, **kwargs)
+        else:
+            return make_message(type, kwargs)
+
+    yield check_make_message, make_message
+    yield check_make_message, _make_message_kwargs_as_dict
+
+def check_make_message(make_message):
     r = {'req_uint32': 1, 'rep_uint32': [3,4]}
     msg = make_message(VariousFields, **r)
     eq_(msg.req_uint32, 1)
