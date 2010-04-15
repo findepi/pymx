@@ -1,3 +1,5 @@
+from __future__ import with_statement
+
 from time import sleep
 
 from pymx.future import Future, FutureError

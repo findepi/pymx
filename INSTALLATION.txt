@@ -7,12 +7,14 @@ Requirements
 ------------
 pyMX has following requirements:
 
-- Python, version 2.6-2.99
+- Python, version 2.5-2.99 (on Windows Python < 2.6 is *not supported*)
 - Google Protocol Buffers for Python (installing Google Protocol Buffers
   compiler "protoc" is recommended)
 - setuptools for installing and/or running tests (automatically downloaded when
   needed)
 - nose (unittest framework for Python) for running tests
+- pywin32 for running tests on Windows with Python < 2.6 (this is, however,
+  unsupported configuration)
 - Java for running tests (JMX server .jar file is included with source
   distribution)
 
@@ -56,6 +58,9 @@ Installing requirements
 - Install nose by running something like
   * `easy_install nose` or, if you don’t have `easy_install` on your `PATH`:
   * `C:\Python26\Scripts\easy_install nose`
+- If using Python < 2.6, install pywin32 from
+  http://sourceforge.net/projects/pywin32/ (be sure to select .exe installer
+  matching Python version you’re running)
 - Install protoc from http://code.google.com/p/protobuf/downloads/list
   (choose something like "protoc-X.Y.Z-win32.zip") — see an attached readme
   file for details

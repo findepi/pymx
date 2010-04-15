@@ -1,3 +1,5 @@
+from __future__ import with_statement
+
 import time
 from random import randint
 from functools import partial

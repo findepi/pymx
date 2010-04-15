@@ -69,8 +69,10 @@ def test_message_getattr():
     eq_(message_getattr(msg, 'req_uint32'), 1)
     eq_(message_getattr(msg, 'opt_uint32'), 1)
 
-    x = ()
-    eq_(message_getattr(x, 'count'), ().count)
+    class A:
+        count = object()
+    x = A()
+    eq_(message_getattr(x, 'count'), x.count)
     assert message_getattr(x, 'nothingspecial', Ellipsis) is Ellipsis
 
 @raises(AttributeError)

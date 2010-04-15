@@ -1,4 +1,7 @@
+
 """Abstract multiplexer backend functionality. """
+
+from __future__ import with_statement
 
 __author__ = 'Piotr Findeisen'
 __copyright__ = 'Copyright 2008-2009 Azouk Network Ltd., ' \

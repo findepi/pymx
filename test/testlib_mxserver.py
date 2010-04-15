@@ -17,6 +17,7 @@ from distutils.spawn import find_executable
 from pymx.frame import Deframer
 from pymx.protobuf import parse_message
 from pymx.message import MultiplexerMessage
+from pymx.hacks.popen import terminate
 from .testlib_threads import TestThread
 
 class _ThreadEnabledServerMixin(object):
@@ -202,7 +203,7 @@ class JmxServerThread(_ThreadEnabledServerMixin, object):
         return True
 
     def _shutdown(self):
-        self.subproc.terminate() # FIXME requires python 2.6+
+        terminate(self.subproc)
 
 def create_mx_server_context(impl=JmxServerThread):
     return contextlib.closing(impl.run_threaded())
