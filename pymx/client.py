@@ -102,14 +102,18 @@ class Client(object):
             self.send_message(message=query)
             response = query_manager.receive(timeout,
                     ignore_types=(MessageTypes.REQUEST_RECEIVED,))
+            backend_error = None
             if response is not None:
-                if response.type != MessageTypes.DELIVERY_ERROR:
-                    return response
-                if skip_resend:
-                    raise OperationFailed("Delivery Error respons for query "
-                            "#%d" % query.id)
+                if response.type == MessageTypes.DELIVERY_ERROR:
+                    if skip_resend:
+                        raise OperationFailed("Delivery Error response for "
+                                "query #%d" % query.id)
+                    else:
+                        first_request_delivery_errored = True
+                elif response.type == MessageTypes.BACKEND_ERROR:
+                    backend_error = response
                 else:
-                    first_request_delivery_errored = True
+                    return response
             elif skip_resend:
                 raise OperationTimedOut("No response received for query #%d",
                         query.id)
@@ -122,17 +126,26 @@ class Client(object):
             query_manager.register_id(search.id)
             searches_count = self.event(search)
             if not searches_count:
+                if backend_error is not None:
+                    return backend_error
                 raise OperationFailed("Could not broadcast backend search")
             searches_timeout = Timeout(timeout)
             while searches_timeout.remaining:
-                response, channel = query_manager.receive(
+                response = query_manager.receive(
                         searches_timeout.timeout, with_channel=True,
                         ignore_types=(MessageTypes.REQUEST_RECEIVED,))
                 if response is None:
+                    if backend_error is not None:
+                        return backend_error
                     raise OperationTimedOut("No response to query #%d and "
                             "backend search #%d" % (query.id, search.id))
+                response, channel = response
 
-                elif response.type == MessageTypes.DELIVERY_ERROR:
+                if response.type in (MessageTypes.DELIVERY_ERROR,
+                        MessageTypes.BACKEND_ERROR):
+                    if response.type == MessageTypes.BACKEND_ERROR and \
+                            backend_error is None:
+                        backend_error = response
                     if response.references == query.id:
                         first_request_delivery_errored = True
                         continue
@@ -143,6 +156,8 @@ class Client(object):
                         if searches_count:
                             continue
                         if first_request_delivery_errored:
+                            if backend_error is not None:
+                                return backend_error
                             raise OperationFailed("Delivery Error responses "
                                     "for query #%d and backend search #%d" %
                                     (query.id, search.id))
@@ -150,11 +165,16 @@ class Client(object):
                             query_manager.unregister_id(search.id)
                             response = query_manager.receive(timeout=timeout)
                             if response is None:
+                                if backend_error is not None:
+                                    return backend_error
                                 raise OperationTimedOut("No response received "
                                         "for query #%d and backend search #%d "
                                         "errored" % (query.id, search.id))
                             assert response.references == query.id
                             if response.type == MessageTypes.DELIVERY_ERROR:
+                                if backend_error is not None:
+                                    # second response to query received...
+                                    return backend_error
                                 raise OperationFailed("Delivery Error "
                                         "responses for query #%d and backend "
                                         "search #%d" % (query.id, search.id))
@@ -185,8 +205,14 @@ class Client(object):
                 if response is None:
                     break
 
+                if response.type == MessageTypes.BACKEND_ERROR:
+                    if backend_error is None:
+                        backend_error = response
+
                 if response.type == MessageTypes.DELIVERY_ERROR:
                     if response.references == retransmitted.id:
+                        if backend_error is not None:
+                            return backend_error
                         raise OperationFailed("Retransmitted query #%d could "
                                 "not be delivered" % retransmitted.id)
                     else:
@@ -196,6 +222,8 @@ class Client(object):
 
                 return response
 
+            if backend_error is not None:
+                return backend_error
             raise OperationTimedOut("No response received for query #%d and "
                     "retransmitted query #%d" % (query.id, retransmitted.id))
 
