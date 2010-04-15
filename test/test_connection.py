@@ -3,7 +3,7 @@ from __future__ import absolute_import, with_statement
 import time
 import asyncore
 import socket
-import contextlib
+from contextlib import closing
 
 from pymx.connection import ConnectionsManager
 from pymx.hacks.socket_pipe import socket_pipe
@@ -50,8 +50,8 @@ def check_mx_server_context(kwargs):
         pass
 
     with create_mx_server_context(**kwargs) as server:
-        so = socket.socket()
-        so.connect(server.server_address)
+        with closing(socket.socket()) as so:
+            so.connect(server.server_address)
 
 def test_channel_connect():
 
