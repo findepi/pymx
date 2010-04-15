@@ -89,7 +89,7 @@ class MultiplexerBackend(object):
             self.handle_one()
 
     def handle_one(self, read_timeout=None):
-        mxmsg, connection = self._client.receive(with_connection=True,
+        mxmsg, connection = self._client.receive(with_channel=True,
                 timeout=read_timeout)
         self.__handle_message(mxmsg, connection)
 

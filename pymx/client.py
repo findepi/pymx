@@ -38,6 +38,13 @@ class Client(object):
     servers. """
 
     def __init__(self, type, multiplexer_password=None):
+        """Construct new `Client` instance.
+
+        :Parameters:
+            - `type`: peer type of new client
+            - `multiplexer_password`: password send to (and optionally
+              validated by) Multiplexer server
+        """
         object.__init__(self)
         self._instance_id = _rand64()
         self._type = type
@@ -53,13 +60,25 @@ class Client(object):
 
     @property
     def instance_id(self):
+        """Peer ID of this client instance."""
         return self._instance_id
 
     @property
     def type(self):
+        """Peer type of this client instance."""
         return self._type
 
     def create_message(self, **kwargs):
+        """Construct `MultiplexerMessage` using `kwargs`.
+
+        This is equivalent to calling
+        `make_message`\ ``(MultiplexerMessage, **kwargs)``
+        except that this method fills by default
+
+            - ``id``
+            - ``from``
+            - ``timestamp``
+        """
         kwargs.setdefault('id', _rand64())
         kwargs.setdefault('from', self.instance_id)
         kwargs.setdefault('timestamp', int(time.time()))
@@ -84,13 +103,42 @@ class Client(object):
         return future
 
     def send_message(self, message, connection=ConnectionsManager.ONE):
+        """Send a message.
+
+        Returns `Future`, which will be set to a number of channels used to
+        send message (this may change without warning).
+
+        :Parameters:
+            - `message`: a MultiplexerMessage object (or raw Multiplexer
+              protocol frame as `str`)
+            - `connection`: ``ConnectionsManager.ONE``,
+              ``ConnectionsManager.ALL`` or channel instance returned by
+              `receive`\ ``(with_channel=True)``
+        """
         return self._manager.send_message(message, connection=connection)
 
     def event(self, message):
+        """Broadcast a message. Equivalent to `send_message` ``(message,
+        ConnectionsManager.ALL)``. """
         return self.send_message(message, connection=ConnectionsManager.ALL)
 
     @transform_message
     def query(self, message, type, timeout, fields=None, skip_resend=False):
+        """Perform a Multiplexer query.
+
+        Returns `MultiplexerMessage` instance. If the ``BACKEND_ERROR`` is
+        received (even after resending the request), it's converted into
+        `BackendError` exception.
+
+        :Parameters:
+            - `message`: a request body (a `str`)
+            - `type`: a request ``type``
+            - `timeout`: timeout of each phase of the query (in seconds)
+            - `fields`: optional `dict` with additional fields (example:
+              ``{'workflow': '....'}``
+            - `skip_resend`: if present and true, query algorithm will not send
+              ``BACKEND_FOR_PACKET_SEARCH`` nor resend the request
+        """
         assert not isinstance(message, MultiplexerMessage)
         fields = dict(fields or {}, message=message, type=type)
 
@@ -227,9 +275,18 @@ class Client(object):
             raise OperationTimedOut("No response received for query #%d and "
                     "retransmitted query #%d" % (query.id, retransmitted.id))
 
-    def receive(self, timeout=None, with_connection=False):
+    def receive(self, timeout=None, with_channel=False):
+        """Receive a message from Multiplexer server. If optional parameter
+        `timeout` is specified and not ``None``, receive will block for at most
+        `timeout` seconds.
+
+        Returns `MultiplexerMessage` if `with_channel` is not specified else
+        ``(message, channel)`` pair. If the received message is a
+        ``BACKEND_ERROR`` message, it will be converted into `BackendError`
+        exception.
+        """
         message, connection = self._receive(timeout=timeout)
-        if with_connection:
+        if with_channel:
             return message, connection
         return message
 
@@ -242,6 +299,7 @@ class Client(object):
         return response
 
     def close(self):
+        """Close this client."""
         self._manager.close()
 
     def __del__(self):
