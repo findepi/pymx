@@ -10,6 +10,9 @@ from pymx.hacks.socket_pipe import socket_pipe
 from pymx.protocol import WelcomeMessage
 from pymx.message import MultiplexerMessage
 from pymx.channel import Channel
+from pymx.future import FutureError
+
+from nose.tools import raises
 
 from .testlib_mxserver import SimpleMxServerThread, JmxServerThread, \
         create_mx_server_context
@@ -83,3 +86,35 @@ def test_manager_connect():
                 server.message_counters
         assert server.message_counters[2] == 1
 
+def test_reconnect():
+    """check reconnect after first successful connect"""
+    with closing(socket.socket()) as so:
+        so.bind(('localhost', 0))
+        so.listen(5)
+        so.settimeout(1.8)
+
+        with closing(create_connections_manager()) as client:
+            address = so.getsockname()
+            client.connect(address, reconnect=1)
+            so_channel, _ = so.accept()
+            so_channel.close()
+            # wait for the client to reconnect
+            so_channel, _ = so.accept()
+
+def test_reconnect_first_failed():
+    """check reconnecting after first connect attempt failed"""
+    # find free port
+    with closing(socket.socket()) as so:
+        so.bind(('localhost', 0))
+        address = so.getsockname()
+
+    with closing(create_connections_manager()) as client:
+        future = client.connect(address, reconnect=0.5)
+        raises(FutureError)(future.wait)()
+
+        with closing(socket.socket()) as so:
+            so.bind(address)
+            so.listen(5)
+            so.settimeout(0.8)
+            # wait for the client to reconnect
+            so_channel = so.accept()

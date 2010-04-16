@@ -187,18 +187,25 @@ class ConnectionsManager(object):
             future.set(True)
 
     @_schedule_in_io_thread
-    def connect(self, future, address):
+    def connect(self, future, address, reconnect=None):
         """Initiates asynchronous connection."""
         with future:
             assert currentThread() is self._io_thread, \
                     "this code must be called by IO thread only"
-            Channel(address=address, manager=self, connect_future=future)
+            Channel(address=address, manager=self, connect_future=future,
+                    reconnect=reconnect)
 
     @_in_io_thread_only
     def handle_connect(self, channel):
         assert channel.connected
         channel.enque_outgoing(self._welcome_frame)
         self._send_heartbit(channel)
+
+    @_in_io_thread_only
+    def handle_disconnect(self, channel):
+        if channel.reconnect is not None:
+            self._scheduler.schedule(channel.reconnect, self.connect,
+                    channel.address, reconnect=channel.reconnect)
 
     def _send_heartbit(self, channel):
         if channel.connected:

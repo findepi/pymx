@@ -9,7 +9,7 @@ from operator import itemgetter
 from .protobuf import make_message
 from .message import MultiplexerMessage
 from .connection import ConnectionsManager
-from .protocol import WelcomeMessage, BackendForPacketSearch
+from .protocol import WelcomeMessage, BackendForPacketSearch, RECONNECT_TIME
 from .protocol_constants import MessageTypes
 from .timeout import Timeout
 from .decorator import parametrizable_decorator
@@ -92,7 +92,8 @@ class Client(object):
         kwargs.setdefault('timestamp', int(time.time()))
         return make_message(MultiplexerMessage, **kwargs)
 
-    def connect(self, address, sync=False, timeout=5):
+    def connect(self, address, sync=False, timeout=5,
+            reconnect=RECONNECT_TIME):
         """Initiate connection to Multiplexer server.
 
         Returns `Future`, which will be set when Multiplexer connection
@@ -104,6 +105,8 @@ class Client(object):
             - `sync`: (keyword-only) if true, wait for connection
             - `timeout`: (keyword-only) timeout used, when `sync` is true
               (``None`` means no timeout)
+            - `reconnect`: after `reconnect` seconds since losing connection to
+              `address` Client should attempt to reconnect
         """
         future = self._manager.connect(address)
         if sync:

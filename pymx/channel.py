@@ -17,13 +17,15 @@ class Channel(dispatcher):
     read_buffer = 8192
     ignore_log_types = ()
 
-    def __init__(self, manager, address, connect_future=None):
+    def __init__(self, manager, address, connect_future=None, reconnect=None):
         map = manager.channel_map
         self._manager = weakref.ref(manager)
         dispatcher.__init__(self, map=map)
         self._outgoing_buffer = BytesFIFO(join_upto=self.write_buffer)
         self._deframer = Deframer()
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
+        self._address = address
+        self._reconnect = reconnect
         self._connect_future = connect_future
         self.connect(address)
 
@@ -40,6 +42,14 @@ class Channel(dispatcher):
             raise RuntimeError("The manager is gone.")
         return manager
 
+    @property
+    def address(self):
+        return self._address
+
+    @property
+    def reconnect(self):
+        return self._reconnect
+
     def writable(self):
         return self._outgoing_buffer or not self.connected
 
@@ -53,6 +63,7 @@ class Channel(dispatcher):
             self._receive_message(message)
 
     def handle_close(self):
+        self.manager.handle_disconnect(self)
         self.close()
 
     def handle_write(self):
