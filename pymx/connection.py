@@ -17,7 +17,7 @@ from .frame import create_frame_header
 from .protocol import HEARTBIT_WRITE_INTERVAL, HEARTBIT_READ_INTERVAL
 from .protocol_constants import MessageTypes
 from .protobuf import make_message
-from .timer import Timer
+from .scheduler import Scheduler
 from .atomic import Atomic, synchronized
 from .timeout import Timeout
 from .future import Future
@@ -110,7 +110,7 @@ class ConnectionsManager(object):
         self._task_notifier_pipe = None
         self._create_task_notifier()
 
-        self._timer = Timer()
+        self._scheduler = Scheduler()
 
         self._io_thread = None
         self._start_io_thread()
@@ -204,8 +204,8 @@ class ConnectionsManager(object):
         if channel.connected:
             channel.enque_outgoing(make_message(MultiplexerMessage,
                 type=MessageTypes.HEARTBIT))
-            self._timer.schedule(HEARTBIT_WRITE_INTERVAL,
-                    partial(self._send_heartbit, channel))
+            self._scheduler.schedule(HEARTBIT_WRITE_INTERVAL,
+                self._send_heartbit, channel)
 
     @_schedule_in_io_thread
     def send_message(self, future, message, connection):

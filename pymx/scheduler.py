@@ -8,7 +8,7 @@ from threading import Condition, Thread, RLock
 
 from .atomic import Atomic
 
-class Timer(object):
+class Scheduler(object):
 
     __creation_counter = Atomic(0)
 
@@ -21,7 +21,7 @@ class Timer(object):
         self._complete_pending = None
 
         self._thread = th = Thread(target=self._worker_thread,
-                name='TimerThread-#' + str(Timer.__creation_counter.inc()))
+                name='TimerThread-#' + str(Scheduler.__creation_counter.inc()))
         th.setDaemon(True)
         th.start()
 
@@ -73,6 +73,6 @@ class Timer(object):
         when = time() + delay
         with self._lock:
             if self._is_closing:
-                raise RuntimeError("Timer already closing")
+                raise RuntimeError("Scheduler already closing")
             heappush(self._tasks, (when, callback))
             self._task_waiter.notify()
