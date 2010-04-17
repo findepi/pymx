@@ -181,8 +181,8 @@ class ConnectionsManager(object):
             if self._is_closing:
                 return
             self._is_closing = True
-        self._scheduler.close()
         self._shutdown()
+        self._scheduler.close(complete=False)
         self._io_thread.join()
 
     @_schedule_in_io_thread
