@@ -65,7 +65,7 @@ def test_client_connect_ping_self():
             client.connect(server.server_address).wait(0.2)
             _check_ping(client)
 
-def test_sending_hearbits():
+def test_sending_heartbits():
     with create_mx_server_context() as server:
         with create_test_client() as client:
             client.connect(server.server_address)
