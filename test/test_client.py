@@ -11,12 +11,13 @@ from pymx.client import Client, OperationTimedOut
 from pymx.protocol import HEARTBIT_READ_INTERVAL
 from pymx.future import wait_all, FutureError
 
-from .testlib_threads import TestThread
+from .testlib_threads import TestThread, check_threads
 from .testlib_mxserver import SimpleMxServerThread, JmxServerThread, \
         create_mx_server_context
 from .testlib_client import create_test_client
 from .testlib_timed import timedcontext
 
+@check_threads
 def test_client_shutdown():
     c = Client(type=317)
     # no close
@@ -41,6 +42,7 @@ def test_client_connect():
     yield check_client_connect, SimpleMxServerThread
     yield check_client_connect, JmxServerThread
 
+@check_threads
 def check_client_connect(server_impl):
     with create_mx_server_context(impl=server_impl) as server:
         client = Client(type=317)
@@ -60,12 +62,14 @@ def check_client_connect(server_impl):
 
         client.close()
 
+@check_threads
 def test_client_connect_ping_self():
     with create_mx_server_context() as server:
         with create_test_client()  as client:
             client.connect(server.server_address).wait(0.2)
             _check_ping(client)
 
+@check_threads
 def test_sending_heartbits():
     with create_mx_server_context() as server:
         with create_test_client() as client:
@@ -84,12 +88,14 @@ def _check_ping(client, to=None, event=False):
     other = to.receive(timeout=5)
     eq_(msg, other)
 
+@check_threads
 def test_client_connect_event_self():
     with create_mx_server_context() as server:
         with create_test_client() as client:
             client.connect(server.server_address).wait(0.2)
             _check_ping(client, event=True)
 
+@check_threads
 def test_two_clients():
     with nested(create_mx_server_context(), create_test_client(),
             create_test_client()) as (server, client_a, client_b):
@@ -98,6 +104,7 @@ def test_two_clients():
         _check_ping(client_a, to=client_b)
         _check_ping(client_a, to=client_b, event=True)
 
+@check_threads
 @timed(15)
 def test_synchronous_connect():
     with create_test_client() as client:
@@ -108,6 +115,7 @@ def test_synchronous_connect():
         raises(FutureError)(
                 lambda: client.connect(('localhost', 1), sync=True))()
 
+@check_threads
 def test_deduplication():
     with nested(create_mx_server_context(), create_mx_server_context(),
             create_test_client()) as (server_a, server_b, client):
@@ -133,6 +141,7 @@ def _echo(client):
             type=msg.type, references=msg.id)
     client.send_message(response)
 
+@check_threads
 def test_query():
     with nested(create_mx_server_context(), create_test_client(),
             create_test_client()) as (server, client_a, client_b):

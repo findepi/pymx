@@ -16,7 +16,9 @@ from nose.tools import raises
 
 from .testlib_mxserver import SimpleMxServerThread, JmxServerThread, \
         create_mx_server_context
+from .testlib_threads import check_threads
 
+@check_threads
 def test_socket_pipe():
     reader, writer = socket_pipe()
     writer.sendall('there is nothing wrong\x00.')
@@ -34,24 +36,34 @@ def create_connections_manager():
     welcome_message.type = 2 # CONNECTION_WELCOME
     return ConnectionsManager(welcome_message=welcome_message)
 
+@check_threads
 def test_create_connections_manager():
-    create_connections_manager()
+    create_connections_manager().close()
 
+@check_threads
+def test_with_connections_manager():
+    with closing(create_connections_manager()):
+        pass
+
+@check_threads
 def test_many_connections_managers():
     for x in xrange(512):
         create_connections_manager().close()
 
+@check_threads
 def test_testlib_mxserver():
     for impl in (SimpleMxServerThread, JmxServerThread):
         server = impl.run_threaded()
         server.close()
         server.thread.join()
 
+@check_threads
 def test_testlib_create_mx_server_context():
     yield check_mx_server_context, {'impl': SimpleMxServerThread}
     yield check_mx_server_context, {'impl': JmxServerThread}
     yield check_mx_server_context, {}
 
+@check_threads
 def check_mx_server_context(kwargs):
     with create_mx_server_context(**kwargs) as server:
         pass
@@ -60,6 +72,7 @@ def check_mx_server_context(kwargs):
         with closing(socket.socket()) as so:
             so.connect(server.server_address)
 
+@check_threads
 def test_channel_connect():
 
     class Manager(object):
@@ -77,6 +90,7 @@ def test_channel_connect():
         asyncore.loop(map=manager.channel_map)
         assert manager.handle_connect_called
 
+@check_threads
 def test_manager_connect():
     with create_mx_server_context(impl=SimpleMxServerThread) as server:
         manager = create_connections_manager()
@@ -90,6 +104,7 @@ def test_manager_connect():
                 server.message_counters
         assert server.message_counters[2] == 1
 
+@check_threads
 def test_reconnect():
     """check reconnect after first successful connect"""
     with closing(socket.socket()) as so:
@@ -105,6 +120,7 @@ def test_reconnect():
             # wait for the client to reconnect
             so_channel, _ = so.accept()
 
+@check_threads
 def test_reconnect_first_failed():
     """check reconnecting after first connect attempt failed"""
     # find free port

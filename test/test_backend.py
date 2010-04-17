@@ -13,7 +13,7 @@ from nose.tools import eq_, nottest, raises
 
 from .testlib_client import create_test_client
 from .testlib_mxserver import create_mx_server_context
-from .testlib_threads import TestThread
+from .testlib_threads import TestThread, check_threads
 from .test_constants import MessageTypes as TestMessageTypes, PeerTypes as \
         TestPeerTypes
 from .testlib_timed import timedcontext
@@ -44,6 +44,7 @@ def test_query():
     yield check_query, MultiplexerBackendSubclass
     yield check_query, PicklingMultiplexerBackendSubclass
 
+@check_threads
 def check_query(backend_factory, backend_kwargs={}):
 
     message = pickle.dumps('some data')
@@ -84,6 +85,7 @@ def test_query_retransmission():
                 notify
         yield check_query_retransmission, '_send_other', notify
 
+@check_threads
 def check_query_retransmission(how, notify):
     class MultiplexerBackendSubclass(MultiplexerBackend):
         __first = True
