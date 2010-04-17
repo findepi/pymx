@@ -170,7 +170,11 @@ class ConnectionsManager(object):
         assert currentThread() is not self._io_thread
         with self._lock:
             self._tasks.append(task)
-        self._task_notifier_pipe.write('t')
+        try:
+            self._task_notifier_pipe.write('t')
+        except IOError:
+            with self._lock:
+                assert self._is_closing
 
     def close(self):
         with self._lock:
