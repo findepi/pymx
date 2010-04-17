@@ -20,10 +20,15 @@ class Scheduler(object):
         self._is_closing = False
         self._complete_pending = None
 
+        i = Scheduler.__creation_counter.inc()
+        self._name = 'Timer #%d' % i
         self._thread = th = Thread(target=self._worker_thread,
-                name='TimerThread-#' + str(Scheduler.__creation_counter.inc()))
+                name='TimerThread-#%d' % i)
         th.setDaemon(True)
         th.start()
+
+    def __repr__(self):
+        return 'Timer(name=%r)' % self._name
 
     def _shutdown(self, complete):
         with self._lock:
