@@ -4,9 +4,7 @@ import os.path
 import socket
 import traceback
 import errno
-import signal
 import time
-import random
 from threading import RLock
 import subprocess
 import contextlib
@@ -49,7 +47,7 @@ class SimpleMxServerThread(_ThreadEnabledServerMixin, object):
 
         self._lock = RLock()
         self._sock = socket.socket()
-        self._sock.bind(('127.0.0.1', 0))
+        self._sock.bind(('localhost', 0))
         self.server_address = self._sock.getsockname()
         self._sock.listen(5)
         self.message_counters = {}
@@ -63,7 +61,7 @@ class SimpleMxServerThread(_ThreadEnabledServerMixin, object):
                     sock = self._sock
                 if sock is None:
                     break
-                client, address = sock.accept()
+                client, _ = sock.accept()
                 with self._lock:
                     if self._shutdown_called:
                         client.close()
@@ -135,13 +133,9 @@ class JmxServerThread(_ThreadEnabledServerMixin, object):
         object.__init__(self)
         _ThreadEnabledServerMixin.__init__(self)
 
-        for _ in xrange(100):
-            self.server_address = ('127.0.0.1',
-                    random.randint(1024 + 1, 2**16 - 1))
-            if not self._check_connectible():
-                break
-        else:
-            raise RuntimeError("Can't find a free port to setup JMX server")
+        with contextlib.closing(socket.socket()) as so:
+            so.bind(('localhost', 0))
+            self.server_address = so.getsockname()
 
         jmx_jar = resource_filename(__name__, 'jmx-0.9-withdeps.jar')
         if not os.path.exists(jmx_jar):

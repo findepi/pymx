@@ -12,7 +12,7 @@ def socket_pipe():
 
     # Create read0end acceptor.
     read_acceptor = socket.socket()
-    read_acceptor.bind(('127.0.0.1', 0))
+    read_acceptor.bind(('localhost', 0))
     read_acceptor.listen(10)
     read_acceptor.setblocking(False)
 

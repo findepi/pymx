@@ -101,11 +101,11 @@ def test_two_clients():
 def test_synchronous_connect():
     with create_test_client() as client:
         # should not run Multiplexer server on port 1
-        future = client.connect(('127.0.0.1', 1))
+        future = client.connect(('localhost', 1))
         raises(FutureError)(lambda: future.wait(10))()
     with create_test_client() as client:
         raises(FutureError)(
-                lambda: client.connect(('127.0.0.1', 1), sync=True))()
+                lambda: client.connect(('localhost', 1), sync=True))()
 
 @timed(9)
 def test_deduplication():
