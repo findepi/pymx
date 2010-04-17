@@ -177,6 +177,7 @@ class ConnectionsManager(object):
             if self._is_closing:
                 return
             self._is_closing = True
+        self._scheduler.close()
         self._shutdown()
         self._io_thread.join()
 
@@ -208,7 +209,9 @@ class ConnectionsManager(object):
                     channel.address, reconnect=channel.reconnect)
 
     def _send_heartbit(self, channel):
-        if channel.connected:
+        with self._lock:
+            if not channel.connected or self._is_closing:
+                return
             channel.enque_outgoing(make_message(MultiplexerMessage,
                 type=MessageTypes.HEARTBIT))
             self._scheduler.schedule(HEARTBIT_WRITE_INTERVAL,

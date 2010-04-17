@@ -37,6 +37,10 @@ def create_connections_manager():
 def test_create_connections_manager():
     create_connections_manager()
 
+def test_many_connections_managers():
+    for x in xrange(512):
+        create_connections_manager().close()
+
 def test_testlib_mxserver():
     for impl in (SimpleMxServerThread, JmxServerThread):
         server = impl.run_threaded()
