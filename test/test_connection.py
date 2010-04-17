@@ -11,6 +11,7 @@ from pymx.protocol import WelcomeMessage
 from pymx.message import MultiplexerMessage
 from pymx.channel import Channel
 from pymx.future import FutureError
+from pymx.protocol_constants import MessageTypes
 
 from nose.tools import raises
 
@@ -33,7 +34,7 @@ def create_connections_manager():
     welcome_message = MultiplexerMessage()
     welcome_message.from_ = 547
     welcome_message.message = welcome.SerializeToString()
-    welcome_message.type = 2 # CONNECTION_WELCOME
+    welcome_message.type = MessageTypes.CONNECTION_WELCOME
     return ConnectionsManager(welcome_message=welcome_message)
 
 @check_threads
