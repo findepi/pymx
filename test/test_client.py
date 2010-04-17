@@ -15,6 +15,7 @@ from .testlib_threads import TestThread
 from .testlib_mxserver import SimpleMxServerThread, JmxServerThread, \
         create_mx_server_context
 from .testlib_client import create_test_client
+from .testlib_timed import timedcontext
 
 def test_client_shutdown():
     c = Client(type=317)
@@ -107,23 +108,24 @@ def test_synchronous_connect():
         raises(FutureError)(
                 lambda: client.connect(('localhost', 1), sync=True))()
 
-@timed(9)
 def test_deduplication():
     with nested(create_mx_server_context(), create_mx_server_context(),
             create_test_client()) as (server_a, server_b, client):
-        wait_all(client.connect(server_a.server_address),
-                client.connect(server_b.server_address), timeout=0.5)
-        msg = client.create_message(to=client.instance_id, type=0)
-        client.event(msg)
-        first = client.receive(timeout=1)
-        eq_(msg, first)
-        try:
-            second = client.receive(timeout=1)
-        except OperationTimedOut:
-            pass
-        else:
-            eq_(first, second)
-            assert False, "duplicated message received"
+
+        with timedcontext(2):
+            wait_all(client.connect(server_a.server_address),
+                    client.connect(server_b.server_address), timeout=0.5)
+            msg = client.create_message(to=client.instance_id, type=0)
+            client.event(msg)
+            first = client.receive(timeout=1)
+            eq_(msg, first)
+            try:
+                second = client.receive(timeout=1)
+            except OperationTimedOut:
+                pass
+            else:
+                eq_(first, second)
+                assert False, "duplicated message received"
 
 def _echo(client):
     msg = client.receive(timeout=5)
@@ -131,24 +133,26 @@ def _echo(client):
             type=msg.type, references=msg.id)
     client.send_message(response)
 
-@timed(4)
 def test_query():
     with nested(create_mx_server_context(), create_test_client(),
             create_test_client()) as (server, client_a, client_b):
 
-        wait_all(client_a.connect(server.server_address),
-                client_b.connect(server.server_address), timeout=0.5)
+        with timedcontext(0.5):
+            wait_all(client_a.connect(server.server_address),
+                    client_b.connect(server.server_address), timeout=0.5)
 
         th = TestThread(target=partial(_echo, client_b))
         th.setDaemon(True)
         th.start()
 
-        response = client_a.query(fields={'to': client_b.instance_id},
-                message='nictuniema', type=1136, timeout=1)
+        with timedcontext(1.5):
+            response = client_a.query(fields={'to': client_b.instance_id},
+                    message='nictuniema', type=1136, timeout=1)
 
-        eq_(response.type, 1136)
-        eq_(response.message, 'nictuniema')
-        eq_(response.from_, client_b.instance_id)
-        eq_(response.to, client_a.instance_id)
+            eq_(response.type, 1136)
+            eq_(response.message, 'nictuniema')
+            eq_(response.from_, client_b.instance_id)
+            eq_(response.to, client_a.instance_id)
 
-        th.join()
+        with timedcontext(0.5):
+            th.join()
