@@ -1,8 +1,8 @@
 
 from traceback import format_exc
-from threading import Thread
+from threading import Thread, enumerate
 
-__all__ = ['TestThread', 'ThreadError']
+from nose.tools import make_decorator
 
 class ThreadError(Exception):
     pass
@@ -25,3 +25,17 @@ class TestThread(Thread):
         assert not self.isAlive()
         if self._exc is not None:
             raise self._exc
+
+def check_threads(func):
+    @make_decorator(func)
+    def _check_threads(*args, **kwargs):
+        start_threads = set(enumerate())
+        func(*args, **kwargs)
+        end_threads = set(enumerate())
+        if start_threads != end_threads:
+            raise ThreadError(
+                    "Those threads are lost: %r and those are new: %r" %
+                    (list(start_threads.difference(end_threads)),
+                        list(end_threads.difference(start_threads))))
+    return _check_threads
+
