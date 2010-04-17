@@ -19,12 +19,12 @@ def test_three_timers():
     x = []
     l = [0]
     with closing(Scheduler()) as a:
-        a.schedule(0.03, x.append, 'a')
         with closing(Scheduler()) as b:
-            b.schedule(0.015, x.append, 'b')
             with closing(Scheduler()) as c:
-                c.schedule(0, b.schedule, 0, a.schedule, 0, l.pop)
+                a.schedule(0.030, x.append, 'a')
+                b.schedule(0.015, x.append, 'b')
                 c.schedule(0, x.append, 'c')
+                c.schedule(0, b.schedule, 0, a.schedule, 0, l.pop)
     eq_(x, ['c', 'b', 'a'])
     eq_(l, [])
 

@@ -12,11 +12,20 @@ from pymx.client import BackendError, OperationTimedOut, OperationFailed
 from nose.tools import eq_, nottest, raises
 
 from .testlib_client import create_test_client
-from .testlib_mxserver import create_mx_server_context
+from .testlib_mxserver import JmxServerThread
 from .testlib_threads import TestThread, check_threads
 from .test_constants import MessageTypes as TestMessageTypes, PeerTypes as \
         TestPeerTypes
 from .testlib_timed import timedcontext
+
+server = None
+
+def setup_module():
+    global server
+    server = JmxServerThread.run_threaded()
+
+def teardown_module():
+    server.close()
 
 @nottest
 def create_test_backend(addresses=(), impl=MultiplexerBackend, handler=None,
@@ -50,8 +59,8 @@ def check_query(backend_factory, backend_kwargs={}):
     message = pickle.dumps('some data')
     backend_kwargs.setdefault('type', 380)
 
-    with nested(create_mx_server_context(), create_test_client(), closing( \
-            backend_factory( **backend_kwargs))) as (server, client, backend):
+    with nested(create_test_client(), closing(backend_factory(
+        **backend_kwargs))) as (client, backend):
 
         with timedcontext(4):
             client.connect(server.server_address, sync=True)
@@ -121,63 +130,62 @@ def check_query_retransmission(how, notify):
     backend_factory = MultiplexerBackendSubclass
     backend_kwargs = {'type': TestPeerTypes.TEST_SERVER}
 
-    with create_mx_server_context() as server:
-        with nested(create_test_client(), closing(backend_factory(
-            **backend_kwargs))) as (client, backend):
+    with nested(create_test_client(), closing(backend_factory(
+        **backend_kwargs))) as (client, backend):
 
-            wait_all(client.connect(server.server_address),
-                    backend.connect(server.server_address), timeout=0.5)
+        wait_all(client.connect(server.server_address),
+                backend.connect(server.server_address), timeout=0.5)
 
-            th = TestThread(target=backend.start)
-            th.setDaemon(True)
-            th.start()
+        th = TestThread(target=backend.start)
+        th.setDaemon(True)
+        th.start()
 
+        with timedcontext(2):
+            # backend replies at the first time according to `how`, the
+            # second time it's all right
+            response = client.query(fields={'workflow': 'some workflow'},
+                    message=message, type=TestMessageTypes.TEST_REQUEST,
+                    timeout=0.5)
+
+        eq_(response.message, message)
+        eq_(response.type, TestMessageTypes.TEST_RESPONSE)
+        eq_(response.from_, backend.instance_id)
+        eq_(response.to, client.instance_id)
+        eq_(response.workflow, 'some workflow')
+
+        th.join()
+
+    with nested(create_test_client(), closing(backend_factory(
+        **backend_kwargs))) as (client, backend):
+
+        wait_all(client.connect(server.server_address),
+                backend.connect(server.server_address), timeout=0.5)
+
+        th = TestThread(target=backend.handle_one)
+        th.setDaemon(True)
+        th.start()
+
+        try:
             with timedcontext(2):
-                # backend replies at the first time according to `how`, the
-                # second time it's all right
-                response = client.query(fields={'workflow': 'some workflow'},
-                        message=message, type=TestMessageTypes.TEST_REQUEST,
-                        timeout=0.5)
+                # backend replies at the first time according to `how`,
+                # then it's gone (handle_one is used in the backend thread)
+                response = client.query(fields={'workflow':
+                    'some workflow'}, message=message,
+                    type=TestMessageTypes.TEST_REQUEST, timeout=0.5,
+                    skip_resend=True)
 
+        except BackendError:
+            assert how == '_raise_exception'
+
+        except OperationTimedOut:
+            assert how in ('_no_response', '_send_other')
+
+        else:
+            assert how == '_be_nice'
             eq_(response.message, message)
             eq_(response.type, TestMessageTypes.TEST_RESPONSE)
             eq_(response.from_, backend.instance_id)
             eq_(response.to, client.instance_id)
             eq_(response.workflow, 'some workflow')
 
-            th.join()
-
-        with nested(create_test_client(), closing(backend_factory(
-            **backend_kwargs))) as (client, backend):
-
-            wait_all(client.connect(server.server_address),
-                    backend.connect(server.server_address), timeout=0.5)
-
-            th = TestThread(target=backend.handle_one)
-            th.setDaemon(True)
-            th.start()
-
-            try:
-                with timedcontext(2):
-                    # backend replies at the first time according to `how`,
-                    # then it's gone (handle_one is used in the backend thread)
-                    response = client.query(fields={'workflow':
-                        'some workflow'}, message=message,
-                        type=TestMessageTypes.TEST_REQUEST, timeout=0.5,
-                        skip_resend=True)
-
-            except BackendError:
-                assert how == '_raise_exception'
-
-            except OperationTimedOut:
-                assert how in ('_no_response', '_send_other')
-
-            else:
-                assert how == '_be_nice'
-                eq_(response.message, message)
-                eq_(response.type, TestMessageTypes.TEST_RESPONSE)
-                eq_(response.from_, backend.instance_id)
-                eq_(response.to, client.instance_id)
-                eq_(response.workflow, 'some workflow')
-
-            th.join()
+        th.join()

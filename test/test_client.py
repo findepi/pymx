@@ -17,6 +17,15 @@ from .testlib_mxserver import SimpleMxServerThread, JmxServerThread, \
 from .testlib_client import create_test_client
 from .testlib_timed import timedcontext
 
+server = None
+
+def setup_module():
+    global server
+    server = JmxServerThread.run_threaded()
+
+def teardown_module():
+    server.close()
+
 @check_threads
 def test_client_shutdown():
     c = Client(type=317)
@@ -44,38 +53,35 @@ def test_client_connect():
 
 @check_threads
 def check_client_connect(server_impl):
-    with create_mx_server_context(impl=server_impl) as server:
-        client = Client(type=317)
-        eq_(client.type, 317)
-        future = client.connect(server.server_address)
-        if server_impl is SimpleMxServerThread:
-            # we can't use conect future, as we can't rely on
-            # SimpleMxServerThread correctly sending welcome messages
-            time.sleep(0.07)
-        else:
-            future.wait(0.2)
+    client = Client(type=317)
+    eq_(client.type, 317)
+    future = client.connect(server.server_address)
+    if server_impl is SimpleMxServerThread:
+        # we can't use conect future, as we can't rely on
+        # SimpleMxServerThread correctly sending welcome messages
+        time.sleep(0.07)
+    else:
+        future.wait(0.2)
 
-        msg = client.create_message(id=5)
-        assert_almost_equal(msg.timestamp, time.time(), -1)
-        eq_(dict(dict_message(msg), timestamp=None), {'timestamp': None, 'id':
-            5, 'from': client.instance_id})
+    msg = client.create_message(id=5)
+    assert_almost_equal(msg.timestamp, time.time(), -1)
+    eq_(dict(dict_message(msg), timestamp=None), {'timestamp': None, 'id':
+        5, 'from': client.instance_id})
 
-        client.close()
+    client.close()
 
 @check_threads
 def test_client_connect_ping_self():
-    with create_mx_server_context() as server:
-        with create_test_client()  as client:
-            client.connect(server.server_address).wait(0.2)
-            _check_ping(client)
+    with create_test_client()  as client:
+        client.connect(server.server_address).wait(0.2)
+        _check_ping(client)
 
 @check_threads
 def test_sending_heartbits():
-    with create_mx_server_context() as server:
-        with create_test_client() as client:
-            client.connect(server.server_address)
-            time.sleep(HEARTBIT_READ_INTERVAL + 3)
-            _check_ping(client)
+    with create_test_client() as client:
+        client.connect(server.server_address)
+        time.sleep(HEARTBIT_READ_INTERVAL + 3)
+        _check_ping(client)
 
 def _check_ping(client, to=None, event=False):
     if to is None:
@@ -90,15 +96,14 @@ def _check_ping(client, to=None, event=False):
 
 @check_threads
 def test_client_connect_event_self():
-    with create_mx_server_context() as server:
-        with create_test_client() as client:
-            client.connect(server.server_address).wait(0.2)
-            _check_ping(client, event=True)
+    with create_test_client() as client:
+        client.connect(server.server_address).wait(0.2)
+        _check_ping(client, event=True)
 
 @check_threads
 def test_two_clients():
-    with nested(create_mx_server_context(), create_test_client(),
-            create_test_client()) as (server, client_a, client_b):
+    with nested(create_test_client(), create_test_client()) as (client_a,
+            client_b):
         wait_all(client_a.connect(server.server_address),
                 client_b.connect(server.server_address), timeout=0.5)
         _check_ping(client_a, to=client_b)
@@ -117,18 +122,19 @@ def test_synchronous_connect():
 
 @check_threads
 def test_deduplication():
-    with nested(create_mx_server_context(), create_mx_server_context(),
-            create_test_client()) as (server_a, server_b, client):
+    with nested(create_mx_server_context(), create_test_client()) as (server_b,
+            client):
+        server_a = server
 
         with timedcontext(2):
             wait_all(client.connect(server_a.server_address),
                     client.connect(server_b.server_address), timeout=0.5)
             msg = client.create_message(to=client.instance_id, type=0)
             client.event(msg)
-            first = client.receive(timeout=1)
+            first = client.receive(timeout=0.5)
             eq_(msg, first)
             try:
-                second = client.receive(timeout=1)
+                second = client.receive(timeout=0.5)
             except OperationTimedOut:
                 pass
             else:
@@ -143,8 +149,8 @@ def _echo(client):
 
 @check_threads
 def test_query():
-    with nested(create_mx_server_context(), create_test_client(),
-            create_test_client()) as (server, client_a, client_b):
+    with nested(create_test_client(), create_test_client()) as (client_a,
+            client_b):
 
         with timedcontext(0.5):
             wait_all(client_a.connect(server.server_address),

@@ -107,7 +107,6 @@ def test_manager_connect():
 
 @check_threads
 def test_reconnect():
-    """check reconnect after first successful connect"""
     with closing(socket.socket()) as so:
         so.bind(('localhost', 0))
         so.listen(5)
@@ -115,7 +114,7 @@ def test_reconnect():
 
         with closing(create_connections_manager()) as client:
             address = so.getsockname()
-            client.connect(address, reconnect=1)
+            client.connect(address, reconnect=0.1)
             so_channel, _ = so.accept()
             so_channel.close()
             # wait for the client to reconnect
@@ -123,14 +122,13 @@ def test_reconnect():
 
 @check_threads
 def test_reconnect_first_failed():
-    """check reconnecting after first connect attempt failed"""
     # find free port
     with closing(socket.socket()) as so:
         so.bind(('localhost', 0))
         address = so.getsockname()
 
     with closing(create_connections_manager()) as client:
-        future = client.connect(address, reconnect=0.5)
+        future = client.connect(address, reconnect=0.1)
         raises(FutureError)(future.wait)()
 
         with closing(socket.socket()) as so:
