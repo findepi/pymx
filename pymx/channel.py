@@ -25,6 +25,7 @@ class Channel(dispatcher):
         self._deframer = Deframer()
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
         self._address = address
+        self.protocol_initialized = False
         self._reconnect = reconnect
         self._connect_future = connect_future
         self.connect(address)
@@ -66,6 +67,12 @@ class Channel(dispatcher):
         self.manager.handle_disconnect(self)
         self.close()
 
+    def close(self):
+        if self._connect_future is not None:
+            self._connect_future.set_error(message="Connection closed")
+            self._connect_future = None
+        dispatcher.close(self)
+
     def handle_write(self):
         if not self._outgoing_buffer:
             return
@@ -84,8 +91,8 @@ class Channel(dispatcher):
         self.handle_write()
 
     def _receive_message(self, message):
+        self.manager.handle_message(message, self)
         if self._connect_future is not None:
             # first message is always CONNECTION_WELCOME sent by the server
             self._connect_future.set(True)
             self._connect_future = None
-        self.manager.handle_message(message, self)

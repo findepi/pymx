@@ -2,6 +2,7 @@
 from __future__ import absolute_import, with_statement
 
 import os
+import sys
 from random import choice
 from threading import RLock, Thread, currentThread
 from functools import wraps, partial
@@ -14,9 +15,10 @@ from .channel import Channel
 from .message import MultiplexerMessage
 from .frame import create_frame_header
 # TODO require heartbits
-from .protocol import HEARTBIT_WRITE_INTERVAL, HEARTBIT_READ_INTERVAL
-from .protocol_constants import MessageTypes
-from .protobuf import make_message
+from .protocol import HEARTBIT_WRITE_INTERVAL, HEARTBIT_READ_INTERVAL, \
+        WelcomeMessage
+from .protocol_constants import MessageTypes, PeerTypes
+from .protobuf import make_message, DecodeError, parse_message
 from .scheduler import Scheduler
 from .atomic import Atomic, synchronized
 from .timeout import Timeout
@@ -53,7 +55,8 @@ def _schedule_in_io_thread(method):
 def _in_io_thread_only(method):
     @wraps(method)
     def in_io_thread_wrapper(self, *args, **kwargs):
-        assert currentThread() is self._io_thread
+        assert currentThread() is self._io_thread, "%r is not %r" % (
+                currentThread(), self._io_thread)
         return method(self, *args, **kwargs)
     return in_io_thread_wrapper
 
@@ -93,7 +96,7 @@ class ConnectionsManager(object):
     _recent_messages_pool = None
     """Deduplication leaking set."""
 
-    def __init__(self, welcome_message):
+    def __init__(self, welcome_message, multiplexer_password=''):
         object.__init__(self)
         self._lock = RLock()
         self._channel_map = {}
@@ -106,6 +109,7 @@ class ConnectionsManager(object):
         welcome_message = welcome_message.SerializeToString()
         self._welcome_frame = create_frame_header(welcome_message) + \
                 welcome_message
+        self._multiplexer_password = multiplexer_password or ''
 
         self._task_notifier_pipe = None
         self._create_task_notifier()
@@ -163,7 +167,7 @@ class ConnectionsManager(object):
     @property
     def _all_channels(self):
         return (ch for ch in self.channel_map.itervalues()
-                if isinstance(ch, Channel))
+                if isinstance(ch, Channel) and ch.protocol_initialized)
 
     def _enque_io_task(self, *args, **kwargs):
         task = partial(*args, **kwargs)
@@ -208,6 +212,7 @@ class ConnectionsManager(object):
 
     @_in_io_thread_only
     def handle_disconnect(self, channel):
+        channel.protocol_initialized = False
         if channel.reconnect is not None:
             self._scheduler.schedule(channel.reconnect, self.connect,
                     channel.address, reconnect=channel.reconnect)
@@ -232,25 +237,44 @@ class ConnectionsManager(object):
             for i, channel in enumerate(channels):
                 assert isinstance(channel, Channel), self.channel_map
                 channel.enque_outgoing(message)
-            future.set(i + 1) # TODO we don't know when it's flushed
+            if i < 0:
+                future.set_error("Not Connected")
+            else:
+                future.set(i + 1) # TODO we don't know when it's flushed
 
     def _get_channels(self, connection):
         if connection is ConnectionsManager.ALL:
             return self._all_channels
         if connection is ConnectionsManager.ONE:
             channels = _listify(self._all_channels)
-            if not channels:
-                raise RuntimeError(
-                        "send_message(via ONE) called when no active channels")
-            return (choice(channels),)
+            return channels and (choice(channels),)
         if isinstance(connection, Channel):
             return (connection,)
         raise ValueError("Could not select channel for connection", connection)
 
     def __handle_connection_welcome(self, message, channel):
-        # TODO could validate it's the first CONNECTION_WELCOME on this
-        # channel
-        pass
+        if channel.protocol_initialized:
+            # TODO use logging
+            print >> sys.stderr, "CONNECTION_WELCOME received on an already " \
+                    "initialized channel", channel
+        else:
+            try:
+                welcome = parse_message(WelcomeMessage, message.message)
+            except DecodeError:
+                print >> sys.stderr, "received invalid CONNECTION_WELCOME", \
+                        repr(message.message), "on", channel
+            else:
+                if welcome.type != PeerTypes.MULTIPLEXER:
+                    print >> sys.stderr, "received CONNECTION_WELCOME not " \
+                            "from MULTIPLEXER on", channel
+                elif self._multiplexer_password != \
+                        welcome.multiplexer_password:
+                    print >> sys.stderr, "received CONNECTION_WELCOME with " \
+                            "wrong multiplexer_password on", channel
+                else:
+                    channel.protocol_initialized = True
+                    return
+        channel.close()
 
     def __handle_heartbit(self, message, channel):
         pass

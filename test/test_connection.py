@@ -3,7 +3,7 @@ from __future__ import absolute_import, with_statement
 import time
 import asyncore
 import socket
-from contextlib import closing
+from contextlib import closing, nested
 
 from pymx.connection import ConnectionsManager
 from pymx.hacks.socket_pipe import socket_pipe
@@ -11,9 +11,11 @@ from pymx.protocol import WelcomeMessage
 from pymx.message import MultiplexerMessage
 from pymx.channel import Channel
 from pymx.future import FutureError
-from pymx.protocol_constants import MessageTypes
+from pymx.protocol_constants import MessageTypes, PeerTypes
+from pymx.protobuf import make_message
+from pymx.frame import create_frame
 
-from nose.tools import raises
+from nose.tools import raises, timed
 
 from .testlib_mxserver import SimpleMxServerThread, JmxServerThread, \
         create_mx_server_context
@@ -27,15 +29,18 @@ def test_socket_pipe():
     reader.setblocking(True)
     assert reader.makefile('r').read() == 'there is nothing wrong\x00.'
 
-def create_connections_manager():
+def create_connections_manager(multiplexer_password=None):
     welcome = WelcomeMessage()
     welcome.id = 547
     welcome.type = 115
+    if multiplexer_password is not None:
+        welcome.multiplexer_password = multiplexer_password
     welcome_message = MultiplexerMessage()
     welcome_message.from_ = 547
     welcome_message.message = welcome.SerializeToString()
     welcome_message.type = MessageTypes.CONNECTION_WELCOME
-    return ConnectionsManager(welcome_message=welcome_message)
+    return ConnectionsManager(welcome_message=welcome_message,
+            multiplexer_password=multiplexer_password)
 
 @check_threads
 def test_create_connections_manager():
@@ -129,7 +134,7 @@ def test_reconnect_first_failed():
 
     with closing(create_connections_manager()) as client:
         future = client.connect(address, reconnect=0.1)
-        raises(FutureError)(future.wait)()
+        raises(FutureError)(future.wait)() # so is closed
 
         with closing(socket.socket()) as so:
             so.bind(address)
@@ -137,3 +142,64 @@ def test_reconnect_first_failed():
             so.settimeout(0.8)
             # wait for the client to reconnect
             so_channel = so.accept()
+
+def test_connect_no_welcome_fails():
+    with nested(closing(socket.socket()), closing(create_connections_manager())
+            ) as (so, client):
+        so.bind(('localhost', 0))
+        so.listen(1)
+        address = so.getsockname()
+        future = client.connect(address)
+        so.accept()[0].close()
+        raises(FutureError)(lambda: future.wait(timeout=1))()
+
+def _send_welcome(so, type=PeerTypes.MULTIPLEXER, id=56987,
+        multiplexer_password=None):
+    welcome = make_message(WelcomeMessage, type=type, id=id,
+            multiplexer_password=multiplexer_password)
+    welcome_message = make_message(MultiplexerMessage,
+            type=MessageTypes.CONNECTION_WELCOME,
+            message=welcome.SerializeToString())
+    so.sendall(create_frame(
+        welcome_message.SerializeToString()))
+
+def test_connect_welcome_ok():
+    with nested(closing(socket.socket()), closing(create_connections_manager())
+            ) as (so, client):
+        so.bind(('localhost', 0))
+        so.listen(1)
+        address = so.getsockname()
+        future = client.connect(address)
+        with closing(so.accept()[0]) as so_channel:
+            _send_welcome(so_channel)
+            future.wait(timeout=0.3)
+
+def test_channel_active_after_handshake():
+    yield check_channel_active_after_handshake
+    yield check_channel_active_after_handshake, ''
+    yield check_channel_active_after_handshake, 'a password'
+
+@timed(1)
+@check_threads
+def check_channel_active_after_handshake(multiplexer_password=None):
+    with nested(closing(socket.socket()), closing(create_connections_manager( \
+            multiplexer_password=multiplexer_password))) as (so, client):
+        so.bind(('localhost', 0))
+        so.listen(1)
+        address = so.getsockname()
+        msg = make_message(MultiplexerMessage, type=0)
+
+        connect_future = client.connect(address)
+        send_future = client.send_message(msg,
+                connection=ConnectionsManager.ONE)
+        # so has not yet replied with CONNECTION_WELCOME
+        raises(FutureError)(lambda: send_future.wait(timeout=0.3))()
+
+        with closing(so.accept()[0]) as so_channel:
+            _send_welcome(so_channel,
+                    multiplexer_password=multiplexer_password)
+            connect_future.wait(timeout=0.3)
+
+            # so has replies, connect_future returned, connection is active
+            client.send_message(msg, connection=ConnectionsManager.ONE).wait(
+                    timeout=0.3)

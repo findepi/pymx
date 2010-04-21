@@ -64,7 +64,8 @@ class Client(object):
                 type=MessageTypes.CONNECTION_WELCOME,
                 message=welcome.SerializeToString(), from_=self.instance_id)
 
-        self._manager = ConnectionsManager(welcome_message)
+        self._manager = ConnectionsManager(welcome_message,
+                multiplexer_password=multiplexer_password)
 
     @property
     def instance_id(self):

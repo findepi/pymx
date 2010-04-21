@@ -26,6 +26,9 @@ def create_frame_header(contents):
             zlib.crc32(contents))
     return header
 
+def create_frame(contents):
+    return create_frame_header(contents) + contents
+
 def unpack_frame_header(header):
     return struct.unpack(_frame_header_format, header)
 
