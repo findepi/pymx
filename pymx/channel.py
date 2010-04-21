@@ -94,5 +94,5 @@ class Channel(dispatcher):
         self.manager.handle_message(message, self)
         if self._connect_future is not None:
             # first message is always CONNECTION_WELCOME sent by the server
-            self._connect_future.set(True)
+            self._connect_future.set(self)
             self._connect_future = None
