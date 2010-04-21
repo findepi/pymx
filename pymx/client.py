@@ -18,9 +18,11 @@ from .exc import MultiplexerException
 _rand64 = partial(randint, 0, 2**64 - 1)
 
 class OperationFailed(MultiplexerException):
+    """Raised when operation fails for any reason. """
     pass
 
 class OperationTimedOut(OperationFailed):
+    """Raised when operation times out. """
     pass
 
 class BackendError(OperationFailed):
@@ -44,6 +46,9 @@ def transform_message(func, message_getter=lambda x: x):
 class Client(object):
     """``Client`` represents the set of open connections to Multiplexer
     servers. """
+
+    ONE = ConnectionsManager.ONE
+    ALL = ConnectionsManager.ALL
 
     def __init__(self, type, multiplexer_password=None):
         """Construct new `Client` instance.
@@ -114,7 +119,7 @@ class Client(object):
             future.wait(timeout)
         return future
 
-    def send_message(self, message, connection=ConnectionsManager.ONE):
+    def send_message(self, message, connection=ONE):
         """Send a message.
 
         Returns `Future`, which will be set to a number of channels used to
@@ -132,7 +137,7 @@ class Client(object):
     def event(self, message):
         """Broadcast a message. Equivalent to `send_message` ``(message,
         ConnectionsManager.ALL)``. """
-        return self.send_message(message, connection=ConnectionsManager.ALL)
+        return self.send_message(message, connection=self.ALL)
 
     @transform_message
     def query(self, message, type, timeout, fields=None, skip_resend=False):
