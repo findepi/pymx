@@ -42,6 +42,16 @@ def transform_message(func, message_getter=lambda x: x):
         return response
     return _transform_message
 
+@parametrizable_decorator
+def deprecated(fn, msg="Don't use it."):
+    from warnings import warn
+    def _deprecated(*args, **kwargs):
+        warn("Function/method %s is deprecated. %s" % (getattr(fn,
+            '__name__', getattr(fn, 'func_name', '<?>')), msg),
+            DeprecationWarning, stacklevel=2)
+        return fn(*args, **kwargs)
+    return _deprecated
+
 
 class Client(object):
     """``Client`` represents the set of open connections to Multiplexer
@@ -118,6 +128,14 @@ class Client(object):
         if sync:
             future.wait(timeout)
         return future
+
+    @deprecated("Use `connect` with sync=False.")
+    def async_connect(self, endpoint):
+        self.connect(address=endpoint)
+
+    @deprecated("Use Future.wait.")
+    def wait_for_connection(self, connwrap, timeout=10):
+        connwrap.wait(timeout)
 
     def send_message(self, message, connection=ONE):
         """Send a message.
@@ -308,6 +326,13 @@ class Client(object):
         if with_channel:
             return message, connection
         return message
+
+    @deprecated("Use `receive`.")
+    def receive_message(self, timeout=-1):
+        assert timeout == -1 or timeout > 0
+        if timeout < 0:
+            timeout = None
+        return self.receive(timeout=timeout)
 
     @transform_message(message_getter=itemgetter(0))
     def _receive(self, timeout=None):
