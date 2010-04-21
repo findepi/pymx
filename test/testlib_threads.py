@@ -32,10 +32,7 @@ def check_threads(func):
         start_threads = set(enumerate())
         func(*args, **kwargs)
         end_threads = set(enumerate())
-        if start_threads != end_threads:
-            raise ThreadError(
-                    "Those threads are lost: %r and those are new: %r" %
-                    (list(start_threads.difference(end_threads)),
-                        list(end_threads.difference(start_threads))))
+        if not start_threads.issuperset(end_threads):
+            raise ThreadError("Those threads are new: %r" % (end_threads,))
     return _check_threads
 
