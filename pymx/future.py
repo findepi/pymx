@@ -27,7 +27,7 @@ class Future(object):
 
     def set(self, value):
         """Set internal value. Not safe to call after `set` or `set_error` have
-        been called. """
+        been called. Not thread-safe. """
         assert not self._has_value.isSet()
         assert not isinstance(value, FutureError)
         self._set(value)
@@ -38,7 +38,7 @@ class Future(object):
 
     def set_error(self, message=None, exc=None):
         """Set internal value to an error. Not safe to call after `set` or
-        `set_error` have been called. """
+        `set_error` have been called. Not thread-safe. """
         try:
             if message is not None:
                 self._set(FutureError(message))
@@ -49,6 +49,15 @@ class Future(object):
                     ''.join(format_exception(*exc))))
         finally:
             exc = None
+
+    @property
+    def has_value(self):
+        return self._has_value.isSet()
+
+    @property
+    def is_error(self):
+        assert self.has_value
+        return isinstance(self._value, FutureError)
 
     @property
     def value(self):

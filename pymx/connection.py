@@ -180,14 +180,16 @@ class ConnectionsManager(object):
             with self._lock:
                 assert self._is_closing
 
-    def close(self):
+    def close(self, timeout=10):
         with self._lock:
             if self._is_closing:
                 return
             self._is_closing = True
         self._shutdown()
         self._scheduler.close(complete=False)
-        self._io_thread.join()
+        self._io_thread.join(timeout=timeout)
+        if self._io_thread.isAlive():
+            raise RuntimeError("IO thread is still alive")
 
     @_schedule_in_io_thread
     def _shutdown(self, future):
@@ -201,8 +203,13 @@ class ConnectionsManager(object):
         with future:
             assert currentThread() is self._io_thread, \
                     "this code must be called by IO thread only"
-            Channel(address=address, manager=self, connect_future=future,
+            ch = Channel(address=address, manager=self, connect_future=future,
                     reconnect=reconnect)
+            with self._lock:
+                if self._is_closing:
+                    ch.close()
+                    assert future.has_value and future.is_error
+                    return
 
     @_in_io_thread_only
     def handle_connect(self, channel):
