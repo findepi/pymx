@@ -16,17 +16,17 @@ def test_timeout():
     assert timer.remaining
     assert_almost_equal(timer.timeout, 0.1, 3)
 
-@timed(0.5)
+@timed(0.7)
 def test_timeout_partition():
     q = Queue()
-    timer = Timeout(0.1)
+    timer = Timeout(0.5)
     i = 0
     while timer.remaining:
         try:
-            q.get(timeout=min(timer.timeout, 0.01))
+            q.get(timeout=min(timer.timeout, 0.1))
         except Empty:
             pass
         i += 1
 
-    assert_almost_equal(i, 10, -1)
+    assert_almost_equal(i, 5, -1)
 
