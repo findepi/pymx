@@ -6,6 +6,7 @@ import sys
 from random import choice
 from threading import RLock, Thread, currentThread
 from functools import wraps, partial
+from itertools import chain
 from collections import deque
 from Queue import Queue, Empty
 from functools import partial
@@ -300,6 +301,18 @@ class ConnectionsManager(object):
             self._query_responses[references] = queue
         return old
 
+    @synchronized
+    def unset_queue_for_message(self, message_id=None, message_ids=()):
+        if message_id is not None:
+            message_ids = chain(message_ids, (message_id,))
+        for mid in message_ids:
+            self.set_queue_for_message(references=mid, queue=None)
+
+    def delayed_unset_queue_for_message(self, delay, message_id=None,
+            message_ids=()):
+        self._scheduler.schedule(delay, self.unset_queue_for_message,
+                message_id=message_id, message_ids=message_ids)
+
     @staticmethod # this function is called with explicit 'self'
     def __default_message_handler(self, message, channel):
         self.__get_queue_for_message(message).put({'message': message,
@@ -416,8 +429,8 @@ class _QueryContextManager(object):
         assert self._is_entered
         self._is_entered = False
         exc_info = None
-        for message_id in self._message_ids:
-            q = self._manager.set_queue_for_message(message_id, None)
+        self._manager.delayed_unset_queue_for_message(delay=5,
+                message_ids=list(self._message_ids))
         self._message_ids = []
 
 
