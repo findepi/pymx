@@ -14,6 +14,14 @@ setup(
         packages = find_packages(),
         test_suite = "nose.collector",
 
+        install_requires = [
+            'protobuf >= 2.1.0'
+            ],
+
+        tests_require = [
+            'nose >= 0.10'
+            ],
+
         entry_points = {
             "distutils.commands": [
                     "protoc = pymx.setuputils.protoc:RunProtoc",
